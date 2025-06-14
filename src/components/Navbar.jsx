@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -36,7 +35,8 @@ const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={user.profilePhoto} alt={user.name} />
+                      {/* Use user.profile_photo_url consistently */}
+                      <AvatarImage src={user.profile_photo_url} alt={user.name} />
                       <AvatarFallback className="ink-gradient text-white">
                         {user.name?.charAt(0)?.toUpperCase() || 'U'}
                       </AvatarFallback>
@@ -45,12 +45,14 @@ const Navbar = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56 glass-effect" align="end">
                   <DropdownMenuItem asChild>
-                    <Link to={user.isArtist ? "/artist-dashboard" : "/client-dashboard"} className="flex items-center">
+                    {/* Use user.is_artist consistently */}
+                    <Link to={user.is_artist ? "/artist-dashboard" : "/client-dashboard"} className="flex items-center">
                       <Settings className="mr-2 h-4 w-4" />
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
-                  {user.isArtist && (
+                  {/* Use user.is_artist consistently */}
+                  {user.is_artist && (
                     <DropdownMenuItem asChild>
                       <Link to={`/artist/${user.username}`} className="flex items-center">
                         <User className="mr-2 h-4 w-4" />
