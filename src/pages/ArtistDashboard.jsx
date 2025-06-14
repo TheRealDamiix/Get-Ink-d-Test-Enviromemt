@@ -13,35 +13,41 @@ import DeleteAccountDialog from '@/components/DeleteAccountDialog';
 import { supabase } from '@/lib/supabaseClient';
 
 const ArtistDashboard = () => {
-  const { user, updateUser, loading: authLoading } = useAuth(); // Destructure loading as authLoading
+  const { user, updateUser, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [stats, setStats] = useState({ followers: 0, portfolio: 0, reviews: 0 });
   const [isDataLoading, setIsDataLoading] = useState(true);
 
-  // This useEffect handles all initial access checks and redirects
+  // This useEffect handles all initial access checks and triggers data fetching
   useEffect(() => {
-    // 1. If auth is still loading, do nothing yet. Wait for it to settle.
+    // 1. If authentication state is still being determined, do nothing yet.
     if (authLoading) {
       return;
     }
 
-    // 2. If auth is NOT loading:
-    //    a. If there's no user, redirect to auth page.
+    // 2. If authentication is complete:
+    //    a. If there's no user logged in, redirect to the authentication page.
     if (!user) {
       navigate('/auth');
       return;
     }
 
-    //    b. If there's a user, but they are not an artist, redirect to client dashboard.
-    //       It's crucial that `user.is_artist` is properly set by AuthContext at this point.
-    if (!user.is_artist) {
+    //    b. If there's a user, but their 'is_artist' flag is explicitly false,
+    //       redirect them to the client dashboard.
+    //       This is crucial: checking for `=== false` prevents redirection if `is_artist` is `undefined`
+    //       (meaning the profile data hasn't fully loaded/merged yet).
+    if (user.is_artist === false) {
       navigate('/client-dashboard');
       return;
     }
 
-    // 3. If we reach here, it means authLoading is false, user exists, and user.is_artist is true.
-    //    Now, proceed with fetching specific dashboard data.
+    // 3. If we reach here, it means:
+    //    `authLoading` is false, `user` is not null, AND `user.is_artist` is either `true` or `undefined`.
+    //    If `user.is_artist` is `undefined`, it means the profile data is still being fetched/merged
+    //    but the user is *expected* to be an artist. We proceed to fetch stats and render loading states.
+
+    // Start fetching dashboard-specific data
     const fetchStats = async () => {
       setIsDataLoading(true); // Indicate that dashboard-specific data is loading
       try {
@@ -57,26 +63,19 @@ const ArtistDashboard = () => {
       }
     };
 
-    fetchStats(); // Call fetchStats only when user is confirmed as artist
+    // Only fetch stats if the user is confirmed to be an artist.
+    // The previous `if (user.is_artist === false)` handles the non-artist case.
+    // If user.is_artist is true (or undefined and expected to be true), fetch data.
+    if (user.is_artist === true) {
+      fetchStats();
+    } else {
+      // If user.is_artist is undefined (profile still loading) but no redirect happened,
+      // we mark data loading as complete for now, and the primary loading check will
+      // continue to show 'Loading authentication...' until `user.is_artist` is true.
+      setIsDataLoading(false);
+    }
 
   }, [user, authLoading, navigate, toast]); // Dependencies: user, authLoading, navigate (for redirection), toast (for fetchStats)
-
-  // Conditional Rendering Logic - This determines what the user *sees*
-  if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading authentication...</div>;
-  }
-
-  // If auth is not loading, but user is still not an artist (after checks in useEffect), display access denied message.
-  // The useEffect will handle the actual navigation away.
-  if (!user || !user.is_artist) {
-    return <div className="min-h-screen flex items-center justify-center">Access Denied. Redirecting...</div>;
-  }
-
-  // If user is confirmed as artist, but dashboard-specific data is still loading
-  if (isDataLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading dashboard data...</div>;
-  }
-
 
   const handleVisibilityRefresh = () => {
     if (user) {
@@ -85,6 +84,26 @@ const ArtistDashboard = () => {
     }
   };
 
+  // Conditional Rendering Logic - This determines what the user *sees*
+  // Show loading while auth is still determining user and profile type,
+  // or if user exists but 'is_artist' is not yet defined (meaning profile merge is pending).
+  if (authLoading || (user && user.is_artist === undefined)) {
+    return <div className="min-h-screen flex items-center justify-center">Loading authentication...</div>;
+  }
+
+  // Once authentication state is settled and 'is_artist' is defined:
+  // If no user, or user is explicitly not an artist, display access denied message.
+  // The useEffect above will handle the actual navigation away.
+  if (!user || user.is_artist === false) {
+    return <div className="min-h-screen flex items-center justify-center">Access Denied. Redirecting...</div>;
+  }
+
+  // Only show data loading if user is confirmed as artist AND dashboard-specific data is still loading
+  if (isDataLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading artist data...</div>;
+  }
+
+  // If all checks pass, render the dashboard content
   const userWithStats = {...user, portfolio: {length: stats.portfolio}, followers: {length: stats.followers}, reviews: {length: stats.reviews}};
 
   return (
