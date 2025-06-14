@@ -5,33 +5,34 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast'; // Corrected import
+import { toast } from '@/components/ui/use-toast';
 
 
 const ProfileSettings = ({ user, updateUser, toast }) => {
   const [profile, setProfile] = useState({
     name: user.name || '',
+    username: user.username || '', // Ensure username is part of local state
     bio: user.bio || '',
     location: user.location || '',
     styles: user.styles || [],
-    booking_status: user.booking_status || false, // Use snake_case
-    booked_until: user.booked_until || '',       // Use snake_case
-    booking_link: user.booking_link || ''         // Use snake_case
+    booking_status: user.booking_status || false,
+    booked_until: user.booked_until || '',
+    booking_link: user.booking_link || ''
   });
   const [newStyle, setNewStyle] = useState('');
 
   const handleProfileUpdate = (e) => {
     e.preventDefault();
-    // Ensure data sent to updateUser matches Supabase schema (snake_case)
     const updatedData = { 
       name: profile.name,
+      username: profile.username, // ADDED: Include username in the update payload
       bio: profile.bio,
       location: profile.location,
       styles: profile.styles,
       booking_status: profile.booking_status,
       booked_until: profile.booked_until,
       booking_link: profile.booking_link,
-      last_active: new Date().toISOString() // Ensure last_active is updated
+      last_active: new Date().toISOString()
     };
     updateUser(updatedData);
     toast({ title: "Profile updated!", description: "Your profile has been successfully updated." });
@@ -58,8 +59,8 @@ const ProfileSettings = ({ user, updateUser, toast }) => {
             <Input id="name" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} placeholder="Your full name" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <Input id="location" value={profile.location} onChange={(e) => setProfile({ ...profile, location: e.target.value })} placeholder="City, State" />
+            <Label htmlFor="username">Username</Label> {/* Added username input field */}
+            <Input id="username" value={profile.username} onChange={(e) => setProfile({ ...profile, username: e.target.value })} placeholder="Your unique username" />
           </div>
         </div>
         <div className="space-y-2">
