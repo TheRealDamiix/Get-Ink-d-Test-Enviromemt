@@ -1,4 +1,3 @@
-// src/pages/ArtistDashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -16,96 +15,79 @@ const ArtistDashboard = () => {
   const { user, updateUser, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ followers: 0, portfolio: 0, reviews: 0 });
+  const [stats, setStats] = useState({ followers: 0, reviews: 0 }); // Removed portfolio from stats
+  const [artistPortfolio, setArtistPortfolio] = useState([]); // State for actual portfolio images
   const [isDataLoading, setIsDataLoading] = useState(true);
 
-  // This useEffect handles all initial access checks and triggers data fetching
   useEffect(() => {
-    // 1. If authentication state is still being determined, do nothing yet.
     if (authLoading) {
       return;
     }
 
-    // 2. If authentication is complete:
-    //    a. If there's no user logged in, redirect to the authentication page.
     if (!user) {
       navigate('/auth');
       return;
     }
 
-    //    b. If there's a user, but their 'is_artist' flag is explicitly false,
-    //       redirect them to the client dashboard.
-    //       This is crucial: checking for `=== false` prevents redirection if `is_artist` is `undefined`
-    //       (meaning the profile data hasn't fully loaded/merged yet).
-    if (user.is_artist === false) {
+    if (!user.is_artist) { // Correctly uses user.is_artist
       navigate('/client-dashboard');
       return;
     }
 
-    // 3. If we reach here, it means:
-    //    `authLoading` is false, `user` is not null, AND `user.is_artist` is either `true` or `undefined`.
-    //    If `user.is_artist` is `undefined`, it means the profile data is still being fetched/merged
-    //    but the user is *expected* to be an artist. We proceed to fetch stats and render loading states.
-
-    // Start fetching dashboard-specific data
-    const fetchStats = async () => {
-      setIsDataLoading(true); // Indicate that dashboard-specific data is loading
+    const fetchDashboardData = async () => {
+      setIsDataLoading(true);
       try {
+        // Fetch counts for stats
         const { count: followersCount } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id);
-        const { count: portfolioCount } = await supabase.from('portfolio_images').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
         const { count: reviewsCount } = await supabase.from('reviews').select('*', { count: 'exact', head: true }).eq('artist_id', user.id);
-        setStats({ followers: followersCount || 0, portfolio: portfolioCount || 0, reviews: reviewsCount || 0 });
+        setStats({ followers: followersCount || 0, reviews: reviewsCount || 0 });
+
+        // Fetch actual portfolio images
+        const { data: portfolioData, error: portfolioError } = await supabase
+          .from('portfolio_images')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (portfolioError) {
+          console.error("Error fetching portfolio images:", portfolioError);
+          setArtistPortfolio([]);
+        } else {
+          setArtistPortfolio(portfolioData);
+        }
+
       } catch (error) {
-        console.error("Error fetching stats:", error);
-        toast({ title: "Error fetching stats", description: "Could not load dashboard statistics.", variant: "destructive" });
+        console.error("Error fetching dashboard data:", error);
+        toast({ title: "Error loading dashboard", description: "Could not load all dashboard data.", variant: "destructive" });
       } finally {
-        setIsDataLoading(false); // Done loading dashboard-specific data
+        setIsDataLoading(false);
       }
     };
 
-    // Only fetch stats if the user is confirmed to be an artist.
-    // The previous `if (user.is_artist === false)` handles the non-artist case.
-    // If user.is_artist is true (or undefined and expected to be true), fetch data.
-    if (user.is_artist === true) {
-      fetchStats();
-    } else {
-      // If user.is_artist is undefined (profile still loading) but no redirect happened,
-      // we mark data loading as complete for now, and the primary loading check will
-      // continue to show 'Loading authentication...' until `user.is_artist` is true.
-      setIsDataLoading(false);
-    }
+    fetchDashboardData();
 
-  }, [user, authLoading, navigate, toast]); // Dependencies: user, authLoading, navigate (for redirection), toast (for fetchStats)
+  }, [user, authLoading, navigate, toast]);
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading authentication...</div>;
+  }
+
+  if (!user || !user.is_artist) {
+    return <div className="min-h-screen flex items-center justify-center">Access Denied. Redirecting...</div>;
+  }
+
+  if (isDataLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading dashboard data...</div>;
+  }
 
   const handleVisibilityRefresh = () => {
     if (user) {
-      updateUser({ last_active: new Date().toISOString() });
+      updateUser({ last_active: new Date().toISOString() }); // Correctly uses last_active
       toast({ title: "Visibility refreshed!", description: "Your profile has been moved to the top of search results." });
     }
   };
 
-  // Conditional Rendering Logic - This determines what the user *sees*
-  // Show loading while auth is still determining user and profile type,
-  // or if user exists but 'is_artist' is not yet defined (meaning profile merge is pending).
-  if (authLoading || (user && user.is_artist === undefined)) {
-    return <div className="min-h-screen flex items-center justify-center">Loading authentication...</div>;
-  }
-
-  // Once authentication state is settled and 'is_artist' is defined:
-  // If no user, or user is explicitly not an artist, display access denied message.
-  // The useEffect above will handle the actual navigation away.
-  if (!user || user.is_artist === false) {
-    return <div className="min-h-screen flex items-center justify-center">Access Denied. Redirecting...</div>;
-  }
-
-  // Only show data loading if user is confirmed as artist AND dashboard-specific data is still loading
-  if (isDataLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading artist data...</div>;
-  }
-
-  // If all checks pass, render the dashboard content
-  const userWithStats = {...user, portfolio: {length: stats.portfolio}, followers: {length: stats.followers}, reviews: {length: stats.reviews}};
-
+  // Pass separate counts to ArtistStats and the actual portfolio array
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="container mx-auto max-w-4xl">
@@ -123,7 +105,8 @@ const ArtistDashboard = () => {
               </Button>
             </div>
           </div>
-          <ArtistStats user={userWithStats} />
+          {/* Pass counts directly to ArtistStats, and include portfolio length from fetched data */}
+          <ArtistStats user={{...user, followers: {length: stats.followers}, portfolio: {length: artistPortfolio.length}}} />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
@@ -131,7 +114,8 @@ const ArtistDashboard = () => {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          <PortfolioManager user={user} updateUser={updateUser} toast={toast} />
+          {/* Pass the actual artistPortfolio array */}
+          <PortfolioManager user={user} updateUser={updateUser} toast={toast} artistPortfolio={artistPortfolio} setArtistPortfolio={setArtistPortfolio} />
         </motion.div>
 
         <motion.div
