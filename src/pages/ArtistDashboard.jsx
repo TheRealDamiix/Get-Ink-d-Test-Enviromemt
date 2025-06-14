@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/use-toast'; // Corrected import
 import { Eye, RefreshCw } from 'lucide-react';
 import ArtistStats from '@/components/dashboard/ArtistStats';
 import ProfileSettings from '@/components/dashboard/ProfileSettings';
@@ -13,10 +13,9 @@ import { supabase } from '@/lib/supabaseClient';
 
 const ArtistDashboard = () => {
   const { user, updateUser, loading: authLoading } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ followers: 0, reviews: 0 }); // Removed portfolio from stats
-  const [artistPortfolio, setArtistPortfolio] = useState([]); // State for actual portfolio images
+  const [stats, setStats] = useState({ followers: 0, reviews: 0 });
+  const [artistPortfolio, setArtistPortfolio] = useState([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
 
   useEffect(() => {
@@ -29,7 +28,7 @@ const ArtistDashboard = () => {
       return;
     }
 
-    if (!user.is_artist) { // Correctly uses user.is_artist
+    if (!user.is_artist) {
       navigate('/client-dashboard');
       return;
     }
@@ -37,12 +36,10 @@ const ArtistDashboard = () => {
     const fetchDashboardData = async () => {
       setIsDataLoading(true);
       try {
-        // Fetch counts for stats
         const { count: followersCount } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id);
         const { count: reviewsCount } = await supabase.from('reviews').select('*', { count: 'exact', head: true }).eq('artist_id', user.id);
         setStats({ followers: followersCount || 0, reviews: reviewsCount || 0 });
 
-        // Fetch actual portfolio images
         const { data: portfolioData, error: portfolioError } = await supabase
           .from('portfolio_images')
           .select('*')
@@ -82,12 +79,11 @@ const ArtistDashboard = () => {
 
   const handleVisibilityRefresh = () => {
     if (user) {
-      updateUser({ last_active: new Date().toISOString() }); // Correctly uses last_active
+      updateUser({ last_active: new Date().toISOString() });
       toast({ title: "Visibility refreshed!", description: "Your profile has been moved to the top of search results." });
     }
   };
 
-  // Pass separate counts to ArtistStats and the actual portfolio array
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="container mx-auto max-w-4xl">
@@ -105,7 +101,6 @@ const ArtistDashboard = () => {
               </Button>
             </div>
           </div>
-          {/* Pass counts directly to ArtistStats, and include portfolio length from fetched data */}
           <ArtistStats user={{...user, followers: {length: stats.followers}, portfolio: {length: artistPortfolio.length}}} />
         </motion.div>
 
@@ -114,7 +109,6 @@ const ArtistDashboard = () => {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          {/* Pass the actual artistPortfolio array */}
           <PortfolioManager user={user} updateUser={updateUser} toast={toast} artistPortfolio={artistPortfolio} setArtistPortfolio={setArtistPortfolio} />
         </motion.div>
 
