@@ -70,9 +70,7 @@ const SearchResultsPage = () => {
     try {
       let supabaseQuery = supabase
         .from('profiles')
-        .select(`
-          * /* Selecting all columns from profiles */
-        `)
+        .select(`*`) // Removed comments from here
         .eq('is_artist', true);
 
       if (parsed.nameKeywords.length > 0) {
@@ -101,7 +99,6 @@ const SearchResultsPage = () => {
       } else {
         console.log('Raw Artists data from Supabase:', artistsData);
         const processedArtists = artistsData.map(artist => {
-          // These will now be 'N/A' or 0 because the embeds are removed for testing
           const totalStars = artist.reviews ? artist.reviews.reduce((sum, review) => sum + review.stars, 0) : 0;
           const averageRating = artist.reviews && artist.reviews.length > 0 ? (totalStars / artist.reviews.length).toFixed(1) : 'N/A';
           const reviewsCount = artist.reviews ? artist.reviews.length : 0;
