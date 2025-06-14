@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { Search, MapPin, Star, Clock, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { supabase } from '@/lib/supabaseClient'; // Import supabase client
+import { supabase } from '@/lib/supabaseClient';
+import { toast } from '@/components/ui/use-toast'; // Corrected import
 
 const SearchResultsPage = () => {
   const [searchParams] = useSearchParams();
@@ -13,8 +14,8 @@ const SearchResultsPage = () => {
   const [loadingArtists, setLoadingArtists] = useState(true);
   const [filteredArtists, setFilteredArtists] = useState([]);
 
-  const knownStyles = ["traditional", "realism", "japanese", "watercolor", "neo-traditional", "tribal", "blackwork", "dotwork", "geometric", "script", "fineline", "chicano", "abstract", "biomechanical", "trash polka"]; // Expanded list
-  const knownLocationHints = ["nc", "ca", "ny", "fl", "tx", "il", "pa", "oh", "ga", "mi", "wa", "ma", "va", "nj", "co", "az", "or", "tn", "mo", "md", "wi", "mn", "sc", "al", "la", "ky", "ok", "ct", "ut", "ia", "nv", "ar", "ms", "ks", "nm", "ne", "id", "hi", "wv", "me", "nh", "ri", "mt", "de", "sd", "nd", "ak", "dc", "vt", "wy", "city", "town", "ville", "beach", "springs", "creek", "valley", "heights", "park", "bay", "harbor", "lake", "forest", "falls", "port", "mount", "mt", "fort", "ft", "saint", "st"]; // Expanded list
+  const knownStyles = ["traditional", "realism", "japanese", "watercolor", "neo-traditional", "tribal", "blackwork", "dotwork", "geometric", "script", "fineline", "chicano", "abstract", "biomechanical", "trash polka"];
+  const knownLocationHints = ["nc", "ca", "ny", "fl", "tx", "il", "pa", "oh", "ga", "mi", "wa", "ma", "va", "nj", "co", "az", "or", "tn", "mo", "md", "wi", "mn", "sc", "al", "la", "ky", "ok", "ct", "ut", "ia", "nv", "ar", "ms", "ks", "nm", "ne", "id", "hi", "wv", "me", "nh", "ri", "mt", "de", "sd", "nd", "ak", "dc", "vt", "wy", "city", "town", "ville", "beach", "springs", "creek", "valley", "heights", "park", "bay", "harbor", "lake", "forest", "falls", "port", "mount", "mt", "fort", "ft", "saint", "st"];
 
   const parseSearchTerm = useCallback((term) => {
     const lowerTerm = term.toLowerCase().trim();
@@ -58,12 +59,13 @@ const SearchResultsPage = () => {
       locationKeywords: locationKeywords,
       zipCode: zipCode,
     };
-  }, [knownStyles, knownLocationHints]); // Add dependencies
+  }, [knownStyles, knownLocationHints]);
 
   const fetchAndFilterArtists = useCallback(async (query) => {
     setLoadingArtists(true);
     setSearchTerm(query);
     const parsed = parseSearchTerm(query);
+    console.log('Parsed Search Terms:', parsed); // LOG 1
 
     try {
       let supabaseQuery = supabase
@@ -80,17 +82,14 @@ const SearchResultsPage = () => {
             stars
           )
         `)
-        .eq('is_artist', true); // Only fetch artists
+        .eq('is_artist', true); 
 
-      // Apply filters based on parsed search terms
       if (parsed.nameKeywords.length > 0) {
         const searchName = parsed.nameKeywords.join(' ').toLowerCase();
-        // Use ILIKE for case-insensitive partial match on name or username
         supabaseQuery = supabaseQuery.or(`name.ilike.%${searchName}%,username.ilike.%${searchName}%`);
       }
       if (parsed.styleKeywords.length > 0) {
-        const searchStyle = parsed.styleKeywords[0].toLowerCase(); // Assuming one style keyword for simplicity
-        // Check if the 'styles' array (jsonb) contains the style keyword
+        const searchStyle = parsed.styleKeywords[0].toLowerCase();
         supabaseQuery = supabaseQuery.contains('styles', [searchStyle]);
       }
       if (parsed.locationKeywords.length > 0) {
@@ -101,14 +100,15 @@ const SearchResultsPage = () => {
         supabaseQuery = supabaseQuery.ilike('location', `%${parsed.zipCode}%`);
       }
 
-      const { data: artistsData, error } = await supabaseQuery.order('last_active', { ascending: false }); // Order by recent activity
+      const { data: artistsData, error } = await supabaseQuery.order('last_active', { ascending: false });
 
       if (error) {
-        console.error('Error fetching artists:', error);
+        console.error('Error fetching artists from Supabase:', error); // LOG 2
         toast({ title: "Error loading artists", description: error.message, variant: "destructive" });
         setArtists([]);
         setFilteredArtists([]);
       } else {
+        console.log('Raw Artists data from Supabase:', artistsData); // LOG 3
         const processedArtists = artistsData.map(artist => {
           const totalStars = artist.reviews.reduce((sum, review) => sum + review.stars, 0);
           const averageRating = artist.reviews.length > 0 ? (totalStars / artist.reviews.length).toFixed(1) : 'N/A';
@@ -120,9 +120,11 @@ const SearchResultsPage = () => {
             portfolio_length: artist.portfolio_images.length
           };
         });
-        setArtists(processedArtists); // Store all fetched artists
-        setFilteredArtists(processedArtists); // Display all fetched artists as filtered
+        setArtists(processedArtists);
+        setFilteredArtists(processedArtists);
       }
+    } catch (generalError) {
+        console.error('General error in fetchAndFilterArtists:', generalError); // LOG 4
     } finally {
       setLoadingArtists(false);
     }
@@ -144,6 +146,9 @@ const SearchResultsPage = () => {
     return null;
   };
   
+  console.log('Current loadingArtists state:', loadingArtists); // LOG 5
+  console.log('Current filteredArtists length:', filteredArtists.length); // LOG 6
+
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="container mx-auto">
