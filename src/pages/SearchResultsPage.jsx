@@ -1,35 +1,30 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, MapPin, Star, Clock, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { supabase } from '@/lib/supabaseClient'; // Import supabase client
 
 const SearchResultsPage = () => {
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
-  const [artists, setArtists] = useState([]);
-  const [filteredArtists, setFilteredArtists] = useState([]);
+  const [artists, setArtists] = useState([]); // This will store all artists from Supabase
+  const [loadingArtists, setLoadingArtists] = useState(true);
+  const [filteredArtists, setFilteredArtists] = useState([]); // This will be used for client-side filtering if needed
 
-  useEffect(() => {
-    const users = JSON.parse(localStorage.getItem('inksnap_users') || '[]');
-    const artistUsers = users.filter(user => user.isArtist);
-    setArtists(artistUsers);
-  }, []);
+  const knownStyles = ["traditional", "realism", "japanese", "watercolor", "neo-traditional", "tribal", "blackwork", "dotwork", "geometric", "script", "fineline", "chicano", "abstract", "biomechanical", "trash polka"]; // Expanded list
+  const knownLocationHints = ["nc", "ca", "ny", "fl", "tx", "il", "pa", "oh", "ga", "mi", "wa", "ma", "va", "nj", "co", "az", "or", "tn", "mo", "md", "wi", "mn", "sc", "al", "la", "ky", "ok", "ct", "ut", "ia", "nv", "ar", "ms", "ks", "nm", "ne", "id", "hi", "wv", "me", "nh", "ri", "mt", "de", "sd", "nd", "ak", "dc", "vt", "wy", "city", "town", "ville", "beach", "springs", "creek", "valley", "heights", "park", "bay", "harbor", "lake", "forest", "falls", "port", "mount", "mt", "fort", "ft", "saint", "st"]; // Expanded list
 
-  const parseSearchTerm = (term) => {
+  const parseSearchTerm = useCallback((term) => {
     const lowerTerm = term.toLowerCase().trim();
-    if (!lowerTerm) return { name: '', style: '', location: '', zip: '' };
+    if (!lowerTerm) return { nameKeywords: [], styleKeywords: [], locationKeywords: [], zipCode: '' };
 
     const terms = lowerTerm.split(/\s+/);
     let nameKeywords = [];
     let styleKeywords = [];
     let locationKeywords = [];
     let zipCode = '';
-
-    const knownStyles = ["traditional", "realism", "japanese", "watercolor", "neo-traditional", "tribal", "blackwork", "dotwork", "geometric", "script"];
-    const knownLocationHints = ["nc", "ca", "ny", "fl", "tx", "il", "pa", "oh", "ga", "mi", "wa", "ma", "va", "nj", "co", "az", "or", "tn", "mo", "md", "wi", "mn", "sc", "al", "la", "ky", "ok", "ct", "ut", "ia", "nv", "ar", "ms", "ks", "nm", "ne", "id", "hi", "wv", "me", "nh", "ri", "mt", "de", "sd", "nd", "ak", "dc", "vt", "wy", "city", "town", "ville", "beach", "springs", "creek", "valley", "heights", "park", "bay", "harbor"];
 
     terms.forEach(t => {
       if (/^\d{5}(-\d{4})?$/.test(t)) {
@@ -45,7 +40,7 @@ const SearchResultsPage = () => {
     let finalNameKeywords = [];
     for (let i = nameKeywords.length - 1; i >= 0; i--) {
         const word = nameKeywords[i];
-        if (knownLocationHints.includes(word) || (word.length === 2 && /[a-z]{2}/.test(word)) || possibleCityParts.length > 0 ) {
+        if (knownLocationHints.includes(word) || (word.length === 2 && /[a-z]{2}/.test(word) && !finalNameKeywords.length) || possibleCityParts.length > 0 ) {
              possibleCityParts.unshift(word);
         } else {
             finalNameKeywords.unshift(word);
@@ -58,60 +53,91 @@ const SearchResultsPage = () => {
     }
 
     return {
-      name: finalNameKeywords.join(' '),
-      style: styleKeywords.join(' '),
-      location: locationKeywords.join(' '),
-      zip: zipCode,
+      nameKeywords: finalNameKeywords,
+      styleKeywords: styleKeywords,
+      locationKeywords: locationKeywords,
+      zipCode: zipCode,
     };
-  };
+  }, [knownStyles, knownLocationHints]); // Add dependencies
+
+  const fetchAndFilterArtists = useCallback(async (query) => {
+    setLoadingArtists(true);
+    setSearchTerm(query);
+    const parsed = parseSearchTerm(query);
+
+    try {
+      let supabaseQuery = supabase
+        .from('profiles')
+        .select(`
+          *,
+          portfolio_images (
+            id,
+            image_url,
+            caption
+          ),
+          reviews (
+            id,
+            stars
+          )
+        `)
+        .eq('is_artist', true); // Only fetch artists
+
+      // Apply filters based on parsed search terms
+      if (parsed.nameKeywords.length > 0) {
+        const searchName = parsed.nameKeywords.join(' ').toLowerCase();
+        // Use ILIKE for case-insensitive partial match on name or username
+        supabaseQuery = supabaseQuery.or(`name.ilike.%${searchName}%,username.ilike.%${searchName}%`);
+      }
+      if (parsed.styleKeywords.length > 0) {
+        const searchStyle = parsed.styleKeywords[0].toLowerCase(); // Assuming one style keyword for simplicity
+        // Check if the 'styles' array (jsonb) contains the style keyword
+        supabaseQuery = supabaseQuery.contains('styles', [searchStyle]);
+      }
+      if (parsed.locationKeywords.length > 0) {
+        const searchLocation = parsed.locationKeywords.join(' ').toLowerCase();
+        supabaseQuery = supabaseQuery.ilike('location', `%${searchLocation}%`);
+      }
+      if (parsed.zipCode) {
+        supabaseQuery = supabaseQuery.ilike('location', `%${parsed.zipCode}%`);
+      }
+
+      const { data: artistsData, error } = await supabaseQuery.order('last_active', { ascending: false }); // Order by recent activity
+
+      if (error) {
+        console.error('Error fetching artists:', error);
+        toast({ title: "Error loading artists", description: error.message, variant: "destructive" });
+        setArtists([]);
+        setFilteredArtists([]);
+      } else {
+        const processedArtists = artistsData.map(artist => {
+          const totalStars = artist.reviews.reduce((sum, review) => sum + review.stars, 0);
+          const averageRating = artist.reviews.length > 0 ? (totalStars / artist.reviews.length).toFixed(1) : 'N/A';
+          const reviewsCount = artist.reviews.length;
+          return {
+            ...artist,
+            average_rating: averageRating,
+            reviews_count: reviewsCount,
+            portfolio_length: artist.portfolio_images.length
+          };
+        });
+        setArtists(processedArtists); // Store all fetched artists
+        setFilteredArtists(processedArtists); // Display all fetched artists as filtered
+      }
+    } finally {
+      setLoadingArtists(false);
+    }
+  }, [parseSearchTerm, toast]);
 
   useEffect(() => {
     const query = searchParams.get('q') || '';
-    setSearchTerm(query);
-    const parsed = parseSearchTerm(query);
-    
-    if (query.trim()) {
-      const filtered = artists.filter(artist => {
-        let matchesName = true;
-        let matchesStyle = true;
-        let matchesLocation = true;
-        let matchesZip = true;
+    fetchAndFilterArtists(query);
+  }, [searchParams, fetchAndFilterArtists]);
 
-        if (parsed.name) {
-          matchesName = artist.name?.toLowerCase().includes(parsed.name) ||
-                        artist.username?.toLowerCase().includes(parsed.name);
-        }
-        if (parsed.style) {
-          matchesStyle = artist.styles?.some(s => s.toLowerCase().includes(parsed.style));
-        }
-        
-        const artistLocationLower = artist.location?.toLowerCase() || '';
-
-        if (parsed.location) {
-          matchesLocation = artistLocationLower.includes(parsed.location);
-        }
-        if (parsed.zip) {
-          matchesZip = artistLocationLower.includes(parsed.zip);
-        }
-        
-        let locationMatch = true;
-        if(parsed.location || parsed.zip) {
-            locationMatch = matchesLocation || matchesZip;
-        }
-
-        return matchesName && matchesStyle && locationMatch;
-      });
-      setFilteredArtists(filtered);
-    } else {
-      setFilteredArtists(artists);
-    }
-  }, [searchParams, artists]);
-
-  const getActivityStatus = (lastActive) => {
-    if (!lastActive) return null;
+  const getActivityStatus = (lastActiveTimestamp) => {
+    if (!lastActiveTimestamp) return null;
     const now = new Date();
-    const lastActiveDate = new Date(lastActive);
-    const diffHours = (now - lastActiveDate) / (1000 * 60 * 60);
+    const lastActiveDate = new Date(lastActiveTimestamp);
+    const diffHours = (now.getTime() - lastActiveDate.getTime()) / (1000 * 60 * 60);
     
     if (diffHours < 48) return { text: 'Just Updated', color: 'text-green-400' };
     if (diffHours < 168) return { text: 'Recently Active', color: 'text-yellow-400' };
@@ -132,7 +158,9 @@ const SearchResultsPage = () => {
           </span>
         </div>
 
-        {filteredArtists.length === 0 ? (
+        {loadingArtists ? (
+          <div className="text-center py-16 text-muted-foreground">Loading artists...</div>
+        ) : filteredArtists.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -152,7 +180,7 @@ const SearchResultsPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredArtists.map((artist, index) => {
-              const activityStatus = getActivityStatus(artist.lastActive);
+              const activityStatus = getActivityStatus(artist.last_active); // Use artist.last_active
               return (
                 <motion.div
                   key={artist.id}
@@ -165,7 +193,7 @@ const SearchResultsPage = () => {
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           <Avatar className="w-12 h-12">
-                            <AvatarImage src={artist.profilePhoto} alt={artist.name} />
+                            <AvatarImage src={artist.profile_photo_url} alt={artist.name} /> {/* Use artist.profile_photo_url */}
                             <AvatarFallback className="ink-gradient text-white">
                               {artist.name?.charAt(0)?.toUpperCase() || 'A'}
                             </AvatarFallback>
@@ -213,18 +241,18 @@ const SearchResultsPage = () => {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-1">
                             <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                            <span className="text-sm font-medium">4.8</span>
-                            <span className="text-sm text-muted-foreground">(24 reviews)</span>
+                            <span className="text-sm font-medium">{artist.average_rating}</span> {/* Display dynamic average_rating */}
+                            <span className="text-sm text-muted-foreground">({artist.reviews_count} reviews)</span> {/* Display dynamic reviews_count */}
                           </div>
-                          {artist.bookingStatus && (
+                          {artist.booking_status && ( // Use artist.booking_status
                             <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">Available</span>
                           )}
                         </div>
-                        {artist.portfolio && artist.portfolio.length > 0 && (
+                        {artist.portfolio_images && artist.portfolio_images.length > 0 && ( // Use portfolio_images
                           <div className="grid grid-cols-3 gap-2">
-                            {artist.portfolio.slice(0, 3).map((image, idx) => (
+                            {artist.portfolio_images.slice(0, 3).map((image, idx) => (
                               <div key={idx} className="aspect-square rounded-lg overflow-hidden">
-                                <img src={image.image} alt={image.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                <img src={image.image_url} alt={image.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> {/* Use image_url */}
                               </div>
                             ))}
                           </div>
