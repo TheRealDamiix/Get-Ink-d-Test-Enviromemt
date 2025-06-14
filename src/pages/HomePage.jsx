@@ -21,20 +21,7 @@ const HomePage = () => {
         const { data: artistsData, error } = await supabase
           .from('profiles')
           .select(`
-            *
-            /* Temporarily removed nested embeds for debugging 'ERR_INSUFFICIENT_RESOURCES' */
-            /*
-            ,
-            portfolio_images (
-              id,
-              image_url,
-              caption
-            ),
-            reviews!artist_id (
-              id,
-              stars
-            )
-            */
+            * /* Selecting all columns from profiles */
           `)
           .eq('is_artist', true)
           .order('last_active', { ascending: false })
@@ -47,6 +34,7 @@ const HomePage = () => {
           // Process fetched data - portfolio_images and reviews will be empty or null if not selected
           const processedArtists = artistsData.map(artist => {
             // These will now be 'N/A' or 0 because the embeds are removed for testing
+            // You will need to re-add the embeds for portfolio_images and reviews later if you want them to display
             const totalStars = artist.reviews ? artist.reviews.reduce((sum, review) => sum + review.stars, 0) : 0;
             const averageRating = artist.reviews && artist.reviews.length > 0 ? (totalStars / artist.reviews.length).toFixed(1) : 'N/A';
             const reviewsCount = artist.reviews ? artist.reviews.length : 0;
@@ -55,7 +43,7 @@ const HomePage = () => {
               ...artist,
               average_rating: averageRating,
               reviews_count: reviewsCount,
-              portfolio_length: artist.portfolio_images ? artist.portfolio_images.length : 0 // Will be 0 for now
+              portfolio_length: artist.portfolio_images ? artist.portfolio_images.length : 0
             };
           });
           setFeaturedArtists(processedArtists);
@@ -226,15 +214,6 @@ const HomePage = () => {
                             )}
                           </div>
                           {/* Portfolio will not display here as it's not fetched currently */}
-                          {/* artist.portfolio_images && artist.portfolio_images.length > 0 && (
-                            <div className="grid grid-cols-3 gap-2">
-                              {artist.portfolio_images.slice(0, 3).map((image, idx) => (
-                                <div key={idx} className="aspect-square rounded-lg overflow-hidden">
-                                  <img src={image.image_url} alt={image.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                </div>
-                              ))}
-                            </div>
-                          )*/}
                         </div>
                       </div>
                     </Link>
