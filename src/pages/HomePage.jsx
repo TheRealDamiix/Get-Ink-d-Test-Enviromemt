@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // CORRECTED LINE HERE
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, MapPin, Star, Clock, TrendingUp } from 'lucide-react';
@@ -20,7 +20,7 @@ const HomePage = () => {
       try {
         const { data: artistsData, error } = await supabase
           .from('profiles')
-          .select(`*`) // Removed comments from here
+          .select(`*`) // No comments here
           .eq('is_artist', true)
           .order('last_active', { ascending: false })
           .limit(3);
@@ -135,7 +135,7 @@ const HomePage = () => {
             <div className="text-center py-10 text-muted-foreground">Loading featured artists...</div>
           ) : featuredArtists.length === 0 ? (
             <div className="text-center py-10">
-              <p className className="text-muted-foreground">No featured artists to show right now. Be the first!</p>
+              <p className="text-muted-foreground">No featured artists to show right now. Be the first!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
