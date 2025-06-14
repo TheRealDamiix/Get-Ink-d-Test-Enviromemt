@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -7,19 +6,66 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { supabase } from '@/lib/supabaseClient'; // Import supabase client
 
 const HomePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [featuredArtists, setFeaturedArtists] = useState([]);
+  const [loadingArtists, setLoadingArtists] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const users = JSON.parse(localStorage.getItem('inksnap_users') || '[]');
-    const artistUsers = users.filter(user => user.isArtist);
-    const sortedArtists = artistUsers.sort((a, b) => new Date(b.lastActive) - new Date(a.lastActive));
-    setFeaturedArtists(sortedArtists.slice(0, 3));
-  }, []);
+    const fetchFeaturedArtists = async () => {
+      setLoadingArtists(true);
+      try {
+        const { data: artistsData, error } = await supabase
+          .from('profiles')
+          .select(`
+            *,
+            portfolio_images (
+              id,
+              image_url,
+              caption
+            ),
+            reviews (
+              id,
+              stars
+            )
+          `)
+          .eq('is_artist', true)
+          .order('last_active', { ascending: false }) // Order by last_active
+          .limit(3); // Limit to 3 featured artists
+
+        if (error) {
+          console.error('Error fetching featured artists:', error);
+          toast({ title: "Error loading artists", description: error.message, variant: "destructive" });
+        } else {
+          // Process fetched data to calculate average rating and portfolio length
+          const processedArtists = artistsData.map(artist => {
+            const totalStars = artist.reviews.reduce((sum, review) => sum + review.stars, 0);
+            const averageRating = artist.reviews.length > 0 ? (totalStars / artist.reviews.length).toFixed(1) : 'N/A';
+            const reviewsCount = artist.reviews.length;
+
+            return {
+              ...artist,
+              // Map Supabase snake_case fields to camelCase if components expect it, or update components
+              // For consistency, let's keep snake_case in data and update components as needed.
+              // Here, directly pass the Supabase fields.
+              average_rating: averageRating,
+              reviews_count: reviewsCount,
+              portfolio_length: artist.portfolio_images.length
+            };
+          });
+          setFeaturedArtists(processedArtists);
+        }
+      } finally {
+        setLoadingArtists(false);
+      }
+    };
+
+    fetchFeaturedArtists();
+  }, [toast]);
 
   const handleSearch = () => {
     if (searchTerm.trim() === '') {
@@ -39,11 +85,11 @@ const HomePage = () => {
     }
   };
 
-  const getActivityStatus = (lastActive) => {
-    if (!lastActive) return null;
+  const getActivityStatus = (lastActiveTimestamp) => {
+    if (!lastActiveTimestamp) return null;
     const now = new Date();
-    const lastActiveDate = new Date(lastActive);
-    const diffHours = (now - lastActiveDate) / (1000 * 60 * 60);
+    const lastActiveDate = new Date(lastActiveTimestamp);
+    const diffHours = (now.getTime() - lastActiveDate.getTime()) / (1000 * 60 * 60);
     
     if (diffHours < 48) return { text: 'Just Updated', color: 'text-green-400' };
     if (diffHours < 168) return { text: 'Recently Active', color: 'text-yellow-400' };
@@ -101,14 +147,16 @@ const HomePage = () => {
             <h2 className="text-3xl font-bold text-center">Featured Artists</h2>
           </div>
           
-          {featuredArtists.length === 0 ? (
+          {loadingArtists ? (
+            <div className="text-center py-10 text-muted-foreground">Loading featured artists...</div>
+          ) : featuredArtists.length === 0 ? (
             <div className="text-center py-10">
               <p className="text-muted-foreground">No featured artists to show right now. Be the first!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredArtists.map((artist, index) => {
-                const activityStatus = getActivityStatus(artist.lastActive);
+                const activityStatus = getActivityStatus(artist.last_active); // Use artist.last_active
                 return (
                   <motion.div
                     key={artist.id}
@@ -121,7 +169,7 @@ const HomePage = () => {
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center space-x-3">
                             <Avatar className="w-12 h-12">
-                              <AvatarImage src={artist.profilePhoto} alt={artist.name} />
+                              <AvatarImage src={artist.profile_photo_url} alt={artist.name} /> {/* Use artist.profile_photo_url */}
                               <AvatarFallback className="ink-gradient text-white">
                                 {artist.name?.charAt(0)?.toUpperCase() || 'A'}
                               </AvatarFallback>
@@ -169,18 +217,18 @@ const HomePage = () => {
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center space-x-1">
                               <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                              <span className="text-sm font-medium">4.8</span>
-                              <span className="text-sm text-muted-foreground">(24 reviews)</span>
+                              <span className="text-sm font-medium">{artist.average_rating}</span> {/* Display dynamic average_rating */}
+                              <span className="text-sm text-muted-foreground">({artist.reviews_count} reviews)</span> {/* Display dynamic reviews_count */}
                             </div>
-                            {artist.bookingStatus && (
+                            {artist.booking_status && ( // Use artist.booking_status
                               <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">Available</span>
                             )}
                           </div>
-                          {artist.portfolio && artist.portfolio.length > 0 && (
+                          {artist.portfolio_images && artist.portfolio_images.length > 0 && ( // Use portfolio_images
                             <div className="grid grid-cols-3 gap-2">
-                              {artist.portfolio.slice(0, 3).map((image, idx) => (
+                              {artist.portfolio_images.slice(0, 3).map((image, idx) => (
                                 <div key={idx} className="aspect-square rounded-lg overflow-hidden">
-                                  <img src={image.image} alt={image.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                  <img src={image.image_url} alt={image.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> {/* Use image_url */}
                                 </div>
                               ))}
                             </div>
