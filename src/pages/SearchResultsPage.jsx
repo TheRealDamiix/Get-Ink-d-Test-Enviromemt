@@ -9,9 +9,9 @@ import { supabase } from '@/lib/supabaseClient'; // Import supabase client
 const SearchResultsPage = () => {
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
-  const [artists, setArtists] = useState([]); // This will store all artists from Supabase
+  const [artists, setArtists] = useState([]);
   const [loadingArtists, setLoadingArtists] = useState(true);
-  const [filteredArtists, setFilteredArtists] = useState([]); // This will be used for client-side filtering if needed
+  const [filteredArtists, setFilteredArtists] = useState([]);
 
   const knownStyles = ["traditional", "realism", "japanese", "watercolor", "neo-traditional", "tribal", "blackwork", "dotwork", "geometric", "script", "fineline", "chicano", "abstract", "biomechanical", "trash polka"]; // Expanded list
   const knownLocationHints = ["nc", "ca", "ny", "fl", "tx", "il", "pa", "oh", "ga", "mi", "wa", "ma", "va", "nj", "co", "az", "or", "tn", "mo", "md", "wi", "mn", "sc", "al", "la", "ky", "ok", "ct", "ut", "ia", "nv", "ar", "ms", "ks", "nm", "ne", "id", "hi", "wv", "me", "nh", "ri", "mt", "de", "sd", "nd", "ak", "dc", "vt", "wy", "city", "town", "ville", "beach", "springs", "creek", "valley", "heights", "park", "bay", "harbor", "lake", "forest", "falls", "port", "mount", "mt", "fort", "ft", "saint", "st"]; // Expanded list
@@ -75,7 +75,7 @@ const SearchResultsPage = () => {
             image_url,
             caption
           ),
-          reviews (
+          reviews!artist_id (
             id,
             stars
           )
@@ -180,7 +180,7 @@ const SearchResultsPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredArtists.map((artist, index) => {
-              const activityStatus = getActivityStatus(artist.last_active); // Use artist.last_active
+              const activityStatus = getActivityStatus(artist.last_active);
               return (
                 <motion.div
                   key={artist.id}
@@ -193,7 +193,7 @@ const SearchResultsPage = () => {
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           <Avatar className="w-12 h-12">
-                            <AvatarImage src={artist.profile_photo_url} alt={artist.name} /> {/* Use artist.profile_photo_url */}
+                            <AvatarImage src={artist.profile_photo_url} alt={artist.name} />
                             <AvatarFallback className="ink-gradient text-white">
                               {artist.name?.charAt(0)?.toUpperCase() || 'A'}
                             </AvatarFallback>
@@ -241,18 +241,18 @@ const SearchResultsPage = () => {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-1">
                             <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                            <span className="text-sm font-medium">{artist.average_rating}</span> {/* Display dynamic average_rating */}
-                            <span className="text-sm text-muted-foreground">({artist.reviews_count} reviews)</span> {/* Display dynamic reviews_count */}
+                            <span className="text-sm font-medium">{artist.average_rating}</span>
+                            <span className="text-sm text-muted-foreground">({artist.reviews_count} reviews)</span>
                           </div>
-                          {artist.booking_status && ( // Use artist.booking_status
+                          {artist.booking_status && (
                             <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">Available</span>
                           )}
                         </div>
-                        {artist.portfolio_images && artist.portfolio_images.length > 0 && ( // Use portfolio_images
+                        {artist.portfolio_images && artist.portfolio_images.length > 0 && (
                           <div className="grid grid-cols-3 gap-2">
                             {artist.portfolio_images.slice(0, 3).map((image, idx) => (
                               <div key={idx} className="aspect-square rounded-lg overflow-hidden">
-                                <img src={image.image_url} alt={image.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> {/* Use image_url */}
+                                <img src={image.image_url} alt={image.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                               </div>
                             ))}
                           </div>
