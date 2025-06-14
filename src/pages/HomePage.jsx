@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } => 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, MapPin, Star, Clock, TrendingUp } from 'lucide-react';
@@ -20,9 +20,7 @@ const HomePage = () => {
       try {
         const { data: artistsData, error } = await supabase
           .from('profiles')
-          .select(`
-            * /* Selecting all columns from profiles */
-          `)
+          .select(`*`) // Removed comments from here
           .eq('is_artist', true)
           .order('last_active', { ascending: false })
           .limit(3);
@@ -31,10 +29,7 @@ const HomePage = () => {
           console.error('Error fetching featured artists:', error);
           toast({ title: "Error loading artists", description: error.message, variant: "destructive" });
         } else {
-          // Process fetched data - portfolio_images and reviews will be empty or null if not selected
           const processedArtists = artistsData.map(artist => {
-            // These will now be 'N/A' or 0 because the embeds are removed for testing
-            // You will need to re-add the embeds for portfolio_images and reviews later if you want them to display
             const totalStars = artist.reviews ? artist.reviews.reduce((sum, review) => sum + review.stars, 0) : 0;
             const averageRating = artist.reviews && artist.reviews.length > 0 ? (totalStars / artist.reviews.length).toFixed(1) : 'N/A';
             const reviewsCount = artist.reviews ? artist.reviews.length : 0;
@@ -140,7 +135,7 @@ const HomePage = () => {
             <div className="text-center py-10 text-muted-foreground">Loading featured artists...</div>
           ) : featuredArtists.length === 0 ? (
             <div className="text-center py-10">
-              <p className="text-muted-foreground">No featured artists to show right now. Be the first!</p>
+              <p className className="text-muted-foreground">No featured artists to show right now. Be the first!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
