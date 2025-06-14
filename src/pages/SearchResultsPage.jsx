@@ -70,7 +70,7 @@ const SearchResultsPage = () => {
     try {
       let supabaseQuery = supabase
         .from('profiles')
-        .select(`*`) // Removed comments from here
+        .select(`*`) // No comments here
         .eq('is_artist', true);
 
       if (parsed.nameKeywords.length > 0) {
