@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -7,14 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/use-toast'; // Corrected import
 import { Heart, Star, Clock, Settings } from 'lucide-react';
 import DeleteAccountDialog from '@/components/DeleteAccountDialog';
 import { supabase } from '@/lib/supabaseClient';
 
 const ClientDashboard = () => {
   const { user, updateUser, loading } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
   
   const [profile, setProfile] = useState({
