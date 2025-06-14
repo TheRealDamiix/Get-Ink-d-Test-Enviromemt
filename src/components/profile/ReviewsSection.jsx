@@ -1,3 +1,4 @@
+// src/components/profile/ReviewsSection.jsx
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -143,7 +144,7 @@ const ReviewsSection = ({ reviews, artistId, onReviewAdded }) => {
             <div key={review.id} className="border-b border-border pb-6 last:border-b-0">
               <div className="flex items-start gap-4">
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={review.reviewer?.profile_photo_url || ''} alt={review.reviewer?.name || 'User'} /> {/* Use reviewer.profile_photo_url */}
+                  <AvatarImage src={review.reviewer?.profile_photo_url || ''} alt={review.reviewer?.name || 'User'} />
                   <AvatarFallback className="ink-gradient text-white">
                     {review.reviewer?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </AvatarFallback>
@@ -160,7 +161,7 @@ const ReviewsSection = ({ reviews, artistId, onReviewAdded }) => {
                       ))}
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      {new Date(review.created_at || review.createdDate).toLocaleDateString()} {/* Use created_at if available from DB */}
+                      {new Date(review.created_at || review.createdDate).toLocaleDateString()}
                     </span>
                   </div>
                   <p className="text-foreground">{review.comment}</p>
@@ -174,6 +175,4 @@ const ReviewsSection = ({ reviews, artistId, onReviewAdded }) => {
   );
 };
 
-export default ReviewsSection;
-
-export default ReviewsSection;
+export default ReviewsSection; // This should be the ONLY default export
