@@ -1,19 +1,20 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Star } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } => '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabaseClient'; // Import supabase client
 
 const ReviewsSection = ({ reviews, artistId, onReviewAdded }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [newReview, setNewReview] = useState({ stars: 5, comment: '' });
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
-  const handleReviewSubmit = (e) => {
+  const handleReviewSubmit = async (e) => { // Make function async
     e.preventDefault();
     
     if (!user) {
@@ -21,31 +22,66 @@ const ReviewsSection = ({ reviews, artistId, onReviewAdded }) => {
       return;
     }
 
-    const allReviews = JSON.parse(localStorage.getItem('inksnap_reviews') || '[]');
-    const existingReview = allReviews.find(r => r.reviewerId === user.id && r.artistId === artistId);
-    if (existingReview) {
-      toast({ title: "Review already exists", description: "You can only leave one review per artist.", variant: "destructive" });
-      return;
+    setIsSubmittingReview(true); // Start loading state
+
+    try {
+      // Check if user has already reviewed this artist from DB (more reliable than localStorage)
+      const { data: existingReview, error: existingReviewError } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('reviewer_id', user.id)
+        .eq('artist_id', artistId)
+        .maybeSingle();
+
+      if (existingReviewError && existingReviewError.code !== 'PGRST116') {
+        throw new Error(existingReviewError.message);
+      }
+
+      if (existingReview) {
+        toast({ title: "Review already exists", description: "You can only leave one review per artist.", variant: "destructive" });
+        return;
+      }
+
+      // Insert review into Supabase
+      const { data, error } = await supabase
+        .from('reviews')
+        .insert([
+          {
+            artist_id: artistId,
+            reviewer_id: user.id,
+            stars: newReview.stars,
+            comment: newReview.comment,
+            // created_at will be automatically set by Supabase if column has default value NOW()
+          }
+        ])
+        .select(); // Select the inserted data to get auto-generated fields like id and created_at
+
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      if (data && data.length > 0) {
+        const postedReview = data[0];
+        // Adapt the posted review data to match the expected format in reviews state
+        onReviewAdded({
+          ...postedReview,
+          reviewer: {
+            id: user.id,
+            name: user.name, // Use user.name from AuthContext
+            profile_photo_url: user.profile_photo_url // Use user.profile_photo_url from AuthContext
+          }
+        });
+        setNewReview({ stars: 5, comment: '' });
+        setShowReviewForm(false);
+        toast({ title: "Review posted!", description: "Thank you for your feedback." });
+      }
+
+    } catch (error) {
+      console.error("Error posting review:", error);
+      toast({ title: "Error posting review", description: error.message || 'An unexpected error occurred.', variant: "destructive" });
+    } finally {
+      setIsSubmittingReview(false); // End loading state
     }
-
-    const review = {
-      id: Date.now().toString(),
-      artistId: artistId,
-      reviewerId: user.id,
-      reviewerName: user.name,
-      reviewerPhoto: user.profilePhoto,
-      stars: newReview.stars,
-      comment: newReview.comment,
-      createdDate: new Date().toISOString()
-    };
-    
-    allReviews.push(review);
-    localStorage.setItem('inksnap_reviews', JSON.stringify(allReviews));
-
-    onReviewAdded(review);
-    setNewReview({ stars: 5, comment: '' });
-    setShowReviewForm(false);
-    toast({ title: "Review posted!", description: "Thank you for your feedback." });
   };
 
   return (
@@ -83,11 +119,14 @@ const ReviewsSection = ({ reviews, artistId, onReviewAdded }) => {
               onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
               placeholder="Share your experience..."
               required
+              disabled={isSubmittingReview}
             />
           </div>
           <div className="flex gap-2">
-            <Button type="submit" className="ink-gradient">Post Review</Button>
-            <Button type="button" variant="outline" onClick={() => setShowReviewForm(false)}>
+            <Button type="submit" className="ink-gradient" disabled={isSubmittingReview}>
+              {isSubmittingReview ? 'Posting...' : 'Post Review'}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setShowReviewForm(false)} disabled={isSubmittingReview}>
               Cancel
             </Button>
           </div>
@@ -104,14 +143,14 @@ const ReviewsSection = ({ reviews, artistId, onReviewAdded }) => {
             <div key={review.id} className="border-b border-border pb-6 last:border-b-0">
               <div className="flex items-start gap-4">
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={review.reviewerPhoto} alt={review.reviewerName} />
+                  <AvatarImage src={review.reviewer?.profile_photo_url || ''} alt={review.reviewer?.name || 'User'} /> {/* Use reviewer.profile_photo_url */}
                   <AvatarFallback className="ink-gradient text-white">
-                    {review.reviewerName?.charAt(0)?.toUpperCase() || 'U'}
+                    {review.reviewer?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="font-medium">{review.reviewerName}</span>
+                    <span className="font-medium">{review.reviewer?.name}</span>
                     <div className="flex">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
@@ -121,7 +160,7 @@ const ReviewsSection = ({ reviews, artistId, onReviewAdded }) => {
                       ))}
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      {new Date(review.createdDate).toLocaleDateString()}
+                      {new Date(review.created_at || review.createdDate).toLocaleDateString()} {/* Use created_at if available from DB */}
                     </span>
                   </div>
                   <p className="text-foreground">{review.comment}</p>
@@ -134,5 +173,7 @@ const ReviewsSection = ({ reviews, artistId, onReviewAdded }) => {
     </div>
   );
 };
+
+export default ReviewsSection;
 
 export default ReviewsSection;
