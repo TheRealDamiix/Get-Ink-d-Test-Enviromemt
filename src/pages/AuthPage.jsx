@@ -7,14 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/use-toast'; // Corrected import
 import { User, Mail, Lock, MapPin } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
 const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login, signup } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [loginForm, setLoginForm] = useState({
