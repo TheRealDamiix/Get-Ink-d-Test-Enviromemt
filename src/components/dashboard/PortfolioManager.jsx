@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Upload, Trash2, Plus } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient'; // Import supabase client
+import { supabase } from '@/lib/supabaseClient';
+import { toast } from '@/components/ui/use-toast'; // Corrected import
+
 
 const PortfolioManager = ({ user, updateUser, toast, artistPortfolio, setArtistPortfolio }) => {
   const [newImage, setNewImage] = useState({ image: '', caption: '' });
@@ -20,7 +22,7 @@ const PortfolioManager = ({ user, updateUser, toast, artistPortfolio, setArtistP
         const { data, error } = await supabase
           .from('portfolio_images')
           .insert([
-            { user_id: user.id, image_url: newImage.image, caption: newImage.caption } // Use user_id and image_url from Supabase schema
+            { user_id: user.id, image_url: newImage.image, caption: newImage.caption }
           ])
           .select();
 
@@ -28,13 +30,11 @@ const PortfolioManager = ({ user, updateUser, toast, artistPortfolio, setArtistP
           console.error("Error adding portfolio image:", error);
           toast({ title: "Error adding image", description: error.message, variant: "destructive" });
         } else if (data && data.length > 0) {
-          // Add the newly created image to local state
-          setArtistPortfolio(prevPortfolio => [{ ...data[0], image: data[0].image_url, createdDate: data[0].created_at }, ...prevPortfolio]); // Adapt for local state
+          setArtistPortfolio(prevPortfolio => [{ ...data[0], image: data[0].image_url, createdDate: data[0].created_at }, ...prevPortfolio]);
           setNewImage({ image: '', caption: '' });
           setShowImageDialog(false);
           toast({ title: "Image added!", description: "Your portfolio has been updated." });
 
-          // Optionally, update last_active for visibility refresh
           updateUser({ last_active: new Date().toISOString() });
         }
       } finally {
@@ -43,21 +43,20 @@ const PortfolioManager = ({ user, updateUser, toast, artistPortfolio, setArtistP
     }
   };
 
-  const handleRemoveImage = async (imageIdToRemove) => { // Accept image ID instead of index
+  const handleRemoveImage = async (imageIdToRemove) => {
     try {
       const { error } = await supabase
         .from('portfolio_images')
         .delete()
-        .eq('id', imageIdToRemove); // Delete by image ID
+        .eq('id', imageIdToRemove);
 
       if (error) {
         console.error("Error removing portfolio image:", error);
         toast({ title: "Error removing image", description: error.message, variant: "destructive" });
       } else {
-        setArtistPortfolio(artistPortfolio.filter(item => item.id !== imageIdToRemove)); // Filter by image ID
+        setArtistPortfolio(artistPortfolio.filter(item => item.id !== imageIdToRemove));
         toast({ title: "Image removed", description: "The image has been removed from your portfolio." });
 
-        // Optionally, update last_active for visibility refresh
         updateUser({ last_active: new Date().toISOString() });
       }
     } catch (error) {
@@ -98,10 +97,10 @@ const PortfolioManager = ({ user, updateUser, toast, artistPortfolio, setArtistP
 
       {artistPortfolio && artistPortfolio.length > 0 ? (
         <div className="portfolio-grid">
-          {artistPortfolio.map((item) => ( // Iterate over artistPortfolio
+          {artistPortfolio.map((item) => (
             <motion.div key={item.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }} className="group relative">
               <div className="aspect-square rounded-lg overflow-hidden mb-2">
-                <img src={item.image_url} alt={item.caption} className="w-full h-full object-cover" /> {/* Use image_url */}
+                <img src={item.image_url} alt={item.caption} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <Button size="sm" variant="destructive" onClick={() => handleRemoveImage(item.id)}><Trash2 className="w-4 h-4" /></Button>
                 </div>
