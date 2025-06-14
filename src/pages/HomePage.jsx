@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Search, MapPin, Star, Clock, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast'; // Corrected import
+import { toast } from '@/components/ui/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -21,7 +21,10 @@ const HomePage = () => {
         const { data: artistsData, error } = await supabase
           .from('profiles')
           .select(`
-            *,
+            *
+            /* Temporarily removed nested embeds for debugging 'ERR_INSUFFICIENT_RESOURCES' */
+            /*
+            ,
             portfolio_images (
               id,
               image_url,
@@ -31,6 +34,7 @@ const HomePage = () => {
               id,
               stars
             )
+            */
           `)
           .eq('is_artist', true)
           .order('last_active', { ascending: false })
@@ -40,16 +44,18 @@ const HomePage = () => {
           console.error('Error fetching featured artists:', error);
           toast({ title: "Error loading artists", description: error.message, variant: "destructive" });
         } else {
+          // Process fetched data - portfolio_images and reviews will be empty or null if not selected
           const processedArtists = artistsData.map(artist => {
-            const totalStars = artist.reviews.reduce((sum, review) => sum + review.stars, 0);
-            const averageRating = artist.reviews.length > 0 ? (totalStars / artist.reviews.length).toFixed(1) : 'N/A';
-            const reviewsCount = artist.reviews.length;
+            // These will now be 'N/A' or 0 because the embeds are removed for testing
+            const totalStars = artist.reviews ? artist.reviews.reduce((sum, review) => sum + review.stars, 0) : 0;
+            const averageRating = artist.reviews && artist.reviews.length > 0 ? (totalStars / artist.reviews.length).toFixed(1) : 'N/A';
+            const reviewsCount = artist.reviews ? artist.reviews.length : 0;
 
             return {
               ...artist,
               average_rating: averageRating,
               reviews_count: reviewsCount,
-              portfolio_length: artist.portfolio_images.length
+              portfolio_length: artist.portfolio_images ? artist.portfolio_images.length : 0 // Will be 0 for now
             };
           });
           setFeaturedArtists(processedArtists);
@@ -60,7 +66,7 @@ const HomePage = () => {
     };
 
     fetchFeaturedArtists();
-  }, []); // Depend on toast is not needed here as toast is a direct import
+  }, []);
 
   const handleSearch = () => {
     if (searchTerm.trim() === '') {
@@ -219,7 +225,8 @@ const HomePage = () => {
                               <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">Available</span>
                             )}
                           </div>
-                          {artist.portfolio_images && artist.portfolio_images.length > 0 && (
+                          {/* Portfolio will not display here as it's not fetched currently */}
+                          {/* artist.portfolio_images && artist.portfolio_images.length > 0 && (
                             <div className="grid grid-cols-3 gap-2">
                               {artist.portfolio_images.slice(0, 3).map((image, idx) => (
                                 <div key={idx} className="aspect-square rounded-lg overflow-hidden">
@@ -227,7 +234,7 @@ const HomePage = () => {
                                 </div>
                               ))}
                             </div>
-                          )}
+                          )*/}
                         </div>
                       </div>
                     </Link>
