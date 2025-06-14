@@ -4,16 +4,15 @@ import { motion } from 'framer-motion';
 import { Search, MapPin, Star, Clock, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/use-toast'; // Corrected import
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { supabase } from '@/lib/supabaseClient'; // Import supabase client
+import { supabase } from '@/lib/supabaseClient';
 
 const HomePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [featuredArtists, setFeaturedArtists] = useState([]);
   const [loadingArtists, setLoadingArtists] = useState(true);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchFeaturedArtists = async () => {
@@ -34,14 +33,13 @@ const HomePage = () => {
             )
           `)
           .eq('is_artist', true)
-          .order('last_active', { ascending: false }) // Order by last_active
-          .limit(3); // Limit to 3 featured artists
+          .order('last_active', { ascending: false })
+          .limit(3);
 
         if (error) {
           console.error('Error fetching featured artists:', error);
           toast({ title: "Error loading artists", description: error.message, variant: "destructive" });
         } else {
-          // Process fetched data to calculate average rating and portfolio length
           const processedArtists = artistsData.map(artist => {
             const totalStars = artist.reviews.reduce((sum, review) => sum + review.stars, 0);
             const averageRating = artist.reviews.length > 0 ? (totalStars / artist.reviews.length).toFixed(1) : 'N/A';
@@ -62,7 +60,7 @@ const HomePage = () => {
     };
 
     fetchFeaturedArtists();
-  }, [toast]);
+  }, []); // Depend on toast is not needed here as toast is a direct import
 
   const handleSearch = () => {
     if (searchTerm.trim() === '') {
