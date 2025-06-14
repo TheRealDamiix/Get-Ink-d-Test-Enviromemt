@@ -5,6 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast'; // Corrected import
+
 
 const ProfileSettings = ({ user, updateUser, toast }) => {
   const [profile, setProfile] = useState({
@@ -12,16 +14,26 @@ const ProfileSettings = ({ user, updateUser, toast }) => {
     bio: user.bio || '',
     location: user.location || '',
     styles: user.styles || [],
-    bookingStatus: user.bookingStatus || false,
-    bookedUntil: user.bookedUntil || '',
-    bookingLink: user.bookingLink || ''
+    booking_status: user.booking_status || false, // Use snake_case
+    booked_until: user.booked_until || '',       // Use snake_case
+    booking_link: user.booking_link || ''         // Use snake_case
   });
   const [newStyle, setNewStyle] = useState('');
 
   const handleProfileUpdate = (e) => {
     e.preventDefault();
-    const updatedUser = { ...user, ...profile, lastActive: new Date().toISOString() };
-    updateUser(updatedUser);
+    // Ensure data sent to updateUser matches Supabase schema (snake_case)
+    const updatedData = { 
+      name: profile.name,
+      bio: profile.bio,
+      location: profile.location,
+      styles: profile.styles,
+      booking_status: profile.booking_status,
+      booked_until: profile.booked_until,
+      booking_link: profile.booking_link,
+      last_active: new Date().toISOString() // Ensure last_active is updated
+    };
+    updateUser(updatedData);
     toast({ title: "Profile updated!", description: "Your profile has been successfully updated." });
   };
 
@@ -71,18 +83,18 @@ const ProfileSettings = ({ user, updateUser, toast }) => {
         </div>
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
-            <Checkbox id="booking-status" checked={profile.bookingStatus} onCheckedChange={(checked) => setProfile({ ...profile, bookingStatus: checked })} />
+            <Checkbox id="booking-status" checked={profile.booking_status} onCheckedChange={(checked) => setProfile({ ...profile, booking_status: checked })} />
             <Label htmlFor="booking-status">Currently accepting bookings</Label>
           </div>
-          {profile.bookingStatus && (
+          {profile.booking_status && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
               <div className="space-y-2">
                 <Label htmlFor="booked-until">Booked Until (Optional)</Label>
-                <Input id="booked-until" type="date" value={profile.bookedUntil} onChange={(e) => setProfile({ ...profile, bookedUntil: e.target.value })} />
+                <Input id="booked-until" type="date" value={profile.booked_until} onChange={(e) => setProfile({ ...profile, booked_until: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="booking-link">Booking Link</Label>
-                <Input id="booking-link" value={profile.bookingLink} onChange={(e) => setProfile({ ...profile, bookingLink: e.target.value })} placeholder="https://your-booking-site.com" />
+                <Input id="booking-link" value={profile.booking_link} onChange={(e) => setProfile({ ...profile, booking_link: e.target.value })} placeholder="https://your-booking-site.com" />
               </div>
             </div>
           )}
