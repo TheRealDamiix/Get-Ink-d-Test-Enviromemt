@@ -71,20 +71,7 @@ const SearchResultsPage = () => {
       let supabaseQuery = supabase
         .from('profiles')
         .select(`
-          *
-          /* Temporarily removed nested embeds for debugging 'ERR_INSUFFICIENT_RESOURCES' */
-          /*
-          ,
-          portfolio_images (
-            id,
-            image_url,
-            caption
-          ),
-          reviews!artist_id (
-            id,
-            stars
-          )
-          */
+          * /* Selecting all columns from profiles */
         `)
         .eq('is_artist', true);
 
@@ -259,15 +246,6 @@ const SearchResultsPage = () => {
                           )}
                         </div>
                         {/* Portfolio will not display here as it's not fetched currently */}
-                        {/* artist.portfolio_images && artist.portfolio_images.length > 0 && (
-                          <div className="grid grid-cols-3 gap-2">
-                            {artist.portfolio_images.slice(0, 3).map((image, idx) => (
-                              <div key={idx} className="aspect-square rounded-lg overflow-hidden">
-                                <img src={image.image_url} alt={image.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                              </div>
-                            ))}
-                          </div>
-                        )*/}
                       </div>
                     </div>
                   </Link>
