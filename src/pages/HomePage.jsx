@@ -28,7 +28,7 @@ const HomePage = () => {
               image_url,
               caption
             ),
-            reviews (
+            reviews!artist_id (
               id,
               stars
             )
@@ -49,9 +49,6 @@ const HomePage = () => {
 
             return {
               ...artist,
-              // Map Supabase snake_case fields to camelCase if components expect it, or update components
-              // For consistency, let's keep snake_case in data and update components as needed.
-              // Here, directly pass the Supabase fields.
               average_rating: averageRating,
               reviews_count: reviewsCount,
               portfolio_length: artist.portfolio_images.length
@@ -156,7 +153,7 @@ const HomePage = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredArtists.map((artist, index) => {
-                const activityStatus = getActivityStatus(artist.last_active); // Use artist.last_active
+                const activityStatus = getActivityStatus(artist.last_active);
                 return (
                   <motion.div
                     key={artist.id}
@@ -169,7 +166,7 @@ const HomePage = () => {
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center space-x-3">
                             <Avatar className="w-12 h-12">
-                              <AvatarImage src={artist.profile_photo_url} alt={artist.name} /> {/* Use artist.profile_photo_url */}
+                              <AvatarImage src={artist.profile_photo_url} alt={artist.name} />
                               <AvatarFallback className="ink-gradient text-white">
                                 {artist.name?.charAt(0)?.toUpperCase() || 'A'}
                               </AvatarFallback>
@@ -217,18 +214,18 @@ const HomePage = () => {
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center space-x-1">
                               <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                              <span className="text-sm font-medium">{artist.average_rating}</span> {/* Display dynamic average_rating */}
-                              <span className="text-sm text-muted-foreground">({artist.reviews_count} reviews)</span> {/* Display dynamic reviews_count */}
+                              <span className="text-sm font-medium">{artist.average_rating}</span>
+                              <span className="text-sm text-muted-foreground">({artist.reviews_count} reviews)</span>
                             </div>
-                            {artist.booking_status && ( // Use artist.booking_status
+                            {artist.booking_status && (
                               <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">Available</span>
                             )}
                           </div>
-                          {artist.portfolio_images && artist.portfolio_images.length > 0 && ( // Use portfolio_images
+                          {artist.portfolio_images && artist.portfolio_images.length > 0 && (
                             <div className="grid grid-cols-3 gap-2">
                               {artist.portfolio_images.slice(0, 3).map((image, idx) => (
                                 <div key={idx} className="aspect-square rounded-lg overflow-hidden">
-                                  <img src={image.image_url} alt={image.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> {/* Use image_url */}
+                                  <img src={image.image_url} alt={image.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                                 </div>
                               ))}
                             </div>
