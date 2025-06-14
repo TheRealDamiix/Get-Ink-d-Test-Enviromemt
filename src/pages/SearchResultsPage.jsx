@@ -5,7 +5,7 @@ import { Search, MapPin, Star, Clock, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/lib/supabaseClient';
-import { toast } from '@/components/ui/use-toast'; // Corrected import
+import { toast } from '@/components/ui/use-toast';
 
 const SearchResultsPage = () => {
   const [searchParams] = useSearchParams();
@@ -65,13 +65,16 @@ const SearchResultsPage = () => {
     setLoadingArtists(true);
     setSearchTerm(query);
     const parsed = parseSearchTerm(query);
-    console.log('Parsed Search Terms:', parsed); // LOG 1
+    console.log('Parsed Search Terms:', parsed);
 
     try {
       let supabaseQuery = supabase
         .from('profiles')
         .select(`
-          *,
+          *
+          /* Temporarily removed nested embeds for debugging 'ERR_INSUFFICIENT_RESOURCES' */
+          /*
+          ,
           portfolio_images (
             id,
             image_url,
@@ -81,8 +84,9 @@ const SearchResultsPage = () => {
             id,
             stars
           )
+          */
         `)
-        .eq('is_artist', true); 
+        .eq('is_artist', true);
 
       if (parsed.nameKeywords.length > 0) {
         const searchName = parsed.nameKeywords.join(' ').toLowerCase();
@@ -103,28 +107,29 @@ const SearchResultsPage = () => {
       const { data: artistsData, error } = await supabaseQuery.order('last_active', { ascending: false });
 
       if (error) {
-        console.error('Error fetching artists from Supabase:', error); // LOG 2
+        console.error('Error fetching artists from Supabase:', error);
         toast({ title: "Error loading artists", description: error.message, variant: "destructive" });
         setArtists([]);
         setFilteredArtists([]);
       } else {
-        console.log('Raw Artists data from Supabase:', artistsData); // LOG 3
+        console.log('Raw Artists data from Supabase:', artistsData);
         const processedArtists = artistsData.map(artist => {
-          const totalStars = artist.reviews.reduce((sum, review) => sum + review.stars, 0);
-          const averageRating = artist.reviews.length > 0 ? (totalStars / artist.reviews.length).toFixed(1) : 'N/A';
-          const reviewsCount = artist.reviews.length;
+          // These will now be 'N/A' or 0 because the embeds are removed for testing
+          const totalStars = artist.reviews ? artist.reviews.reduce((sum, review) => sum + review.stars, 0) : 0;
+          const averageRating = artist.reviews && artist.reviews.length > 0 ? (totalStars / artist.reviews.length).toFixed(1) : 'N/A';
+          const reviewsCount = artist.reviews ? artist.reviews.length : 0;
           return {
             ...artist,
             average_rating: averageRating,
             reviews_count: reviewsCount,
-            portfolio_length: artist.portfolio_images.length
+            portfolio_length: artist.portfolio_images ? artist.portfolio_images.length : 0
           };
         });
         setArtists(processedArtists);
         setFilteredArtists(processedArtists);
       }
     } catch (generalError) {
-        console.error('General error in fetchAndFilterArtists:', generalError); // LOG 4
+        console.error('General error in fetchAndFilterArtists:', generalError);
     } finally {
       setLoadingArtists(false);
     }
@@ -146,8 +151,8 @@ const SearchResultsPage = () => {
     return null;
   };
   
-  console.log('Current loadingArtists state:', loadingArtists); // LOG 5
-  console.log('Current filteredArtists length:', filteredArtists.length); // LOG 6
+  console.log('Current loadingArtists state:', loadingArtists);
+  console.log('Current filteredArtists length:', filteredArtists.length);
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -253,7 +258,8 @@ const SearchResultsPage = () => {
                             <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">Available</span>
                           )}
                         </div>
-                        {artist.portfolio_images && artist.portfolio_images.length > 0 && (
+                        {/* Portfolio will not display here as it's not fetched currently */}
+                        {/* artist.portfolio_images && artist.portfolio_images.length > 0 && (
                           <div className="grid grid-cols-3 gap-2">
                             {artist.portfolio_images.slice(0, 3).map((image, idx) => (
                               <div key={idx} className="aspect-square rounded-lg overflow-hidden">
@@ -261,7 +267,7 @@ const SearchResultsPage = () => {
                               </div>
                             ))}
                           </div>
-                        )}
+                        )*/}
                       </div>
                     </div>
                   </Link>
