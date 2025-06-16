@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2, PlusCircle, Trash2, Edit, Image as ImageIcon, Tag, DollarSign } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const DEAL_IMAGES_BUCKET = 'deal_images';
+const DEAL_IMAGES_BUCKET = 'deal-images';
 
 const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
   const [deals, setDeals] = useState([]);
