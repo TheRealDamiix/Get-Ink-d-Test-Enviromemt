@@ -86,18 +86,21 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
     }
   };
   
-  const uploadImageToCloudinary = async (file, userId, folderName, caption = null) => { // Updated parameters
-    if (!file || !userId) return null;
+  const uploadImageToCloudinary = async (file, userId, folderName, caption = null) => { 
+    if (!file || !userId) {
+      console.warn("Upload aborted: Missing file or user ID.", { file, userId }); 
+      return null;
+    }
 
     setIsLoading(true);
 
     try {
         const formDataForUpload = new FormData();
-        formDataForUpload.append('file', file);
-        formDataForUpload.append('userId', userId); // Explicitly add userId
+        formDataForUpload.append('file', file, file.name); // Explicitly pass filename
+        formDataForUpload.append('userId', String(userId)); // Ensure userId is a string
         formDataForUpload.append('folder', folderName);
         if (caption) {
-            formDataForUpload.append('caption', caption);
+            formDataForUpload.append('caption', String(caption)); // Ensure caption is a string
         }
 
         const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-cloudinary', {
@@ -145,7 +148,6 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
     let imagePublicId = currentDeal.existing_image_public_id; 
 
     if (currentDeal.image_file) {
-      // Pass user.id and currentDeal.deal_description (or title) as caption
       const uploaded = await uploadImageToCloudinary(currentDeal.image_file, user.id, 'deal-images', currentDeal.deal_description); 
       if (uploaded) {
         imageUrl = uploaded.url;
