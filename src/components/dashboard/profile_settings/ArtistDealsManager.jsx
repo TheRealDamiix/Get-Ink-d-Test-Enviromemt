@@ -1,5 +1,4 @@
-import * as React from 'react'; // Changed this line
-import { useState, useEffect, useCallback } from 'react'; // This line might be redundant if using React.*
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,8 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, PlusCircle, Trash2, Edit, Image as ImageIcon, Tag, DollarSign } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const DEAL_IMAGES_BUCKET = 'deal-images';
 
 const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
   const [deals, setDeals] = useState([]);
@@ -22,7 +19,7 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
     price: '',
     image_file: null, 
     existing_image_url: null, 
-    existing_image_path: null, 
+    existing_image_public_id: null, // Renamed to public_id for consistency
     valid_until: '' 
   });
   const [isEditingDeal, setIsEditingDeal] = useState(false);
@@ -67,12 +64,12 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
         price: deal.price !== null && deal.price !== undefined ? String(deal.price) : '',
         image_file: null,
         existing_image_url: deal.image_url,
-        existing_image_path: deal.image_public_id, 
+        existing_image_public_id: deal.image_public_id, 
         valid_until: deal.valid_until ? deal.valid_until.split('T')[0] : ''
       });
       setIsEditingDeal(true);
     } else {
-      setCurrentDeal({ id: null, title: '', deal_description: '', price: '', image_file: null, existing_image_url: null, existing_image_path: null, valid_until: '' });
+      setCurrentDeal({ id: null, title: '', deal_description: '', price: '', image_file: null, existing_image_url: null, existing_image_public_id: null, valid_until: '' });
       setIsEditingDeal(false);
     }
     setShowDealDialog(true);
@@ -89,27 +86,32 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
     }
   };
   
-  const uploadImageToSupabaseStorage = async (file, bucketName) => {
+  const uploadImageToCloudinary = async (file, folderName, fileNamePrefix = 'image') => {
     if (!file || !user) return null;
     setIsLoading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/${Date.now()}_deal.${fileExt}`;
+      const fileName = `${fileNamePrefix}_${user.id}_${Date.now()}.${fileExt}`;
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(bucketName)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false, 
-        });
+      const formDataForUpload = new FormData();
+      formDataForUpload.append('file', file);
+      formDataForUpload.append('fileName', fileName);
+      formDataForUpload.append('folder', folderName);
 
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-      return { url: urlData.publicUrl, path: filePath };
+      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-cloudinary', {
+        body: formDataForUpload,
+      });
+      
+      if (uploadError || !uploadData || !uploadData.secure_url) {
+        let errorMessage = `Failed to upload ${folderName} image.`;
+        if (uploadError?.message) errorMessage = uploadError.message;
+        else if (uploadData?.error) errorMessage = uploadData.error;
+        throw new Error(errorMessage);
+      }
+      return { url: uploadData.secure_url, publicId: uploadData.public_id };
 
     } catch (error) {
-      console.error(`Error uploading to Supabase Storage (${bucketName}):`, error);
+      console.error(`Error uploading to Cloudinary (${folderName}):`, error);
       toast({ title: "Upload Error", description: `Failed to upload image. ${error.message}`, variant: "destructive" });
       return null;
     } finally {
@@ -117,14 +119,16 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
     }
   };
 
-  const deleteImageFromSupabaseStorage = async (bucketName, path) => {
-    if (!path) return;
+  const deleteImageFromCloudinary = async (publicId) => {
+    if (!publicId) return;
     try {
-      const { error } = await supabase.storage.from(bucketName).remove([path]);
+      const { error } = await supabase.functions.invoke('delete-from-cloudinary', {
+        body: { publicId: publicId },
+      });
       if (error) throw error;
     } catch (error) {
-      console.error(`Error deleting from Supabase Storage (${bucketName}):`, error);
-      toast({ title: "Image Deletion Error", description: `Failed to remove old image. ${error.message}`, variant: "destructive" });
+      console.error(`Error deleting from Cloudinary:`, error);
+      toast({ title: "Image Deletion Error", description: `Failed to remove old image from Cloudinary. ${error.message}`, variant: "destructive" });
     }
   };
 
@@ -136,24 +140,24 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
     setIsLoading(true);
 
     let imageUrl = currentDeal.existing_image_url;
-    let imagePath = currentDeal.existing_image_path; 
+    let imagePublicId = currentDeal.existing_image_public_id; 
 
     if (currentDeal.image_file) {
-      const uploaded = await uploadImageToSupabaseStorage(currentDeal.image_file, DEAL_IMAGES_BUCKET);
+      const uploaded = await uploadImageToCloudinary(currentDeal.image_file, 'deal-images', 'deal');
       if (uploaded) {
         imageUrl = uploaded.url;
-        imagePath = uploaded.path;
-        if (isEditingDeal && currentDeal.existing_image_path && currentDeal.existing_image_path !== imagePath) {
-           await deleteImageFromSupabaseStorage(DEAL_IMAGES_BUCKET, currentDeal.existing_image_path);
+        imagePublicId = uploaded.publicId;
+        if (isEditingDeal && currentDeal.existing_image_public_id && currentDeal.existing_image_public_id !== imagePublicId) {
+           await deleteImageFromCloudinary(currentDeal.existing_image_public_id);
         }
       } else {
         setIsLoading(false);
         return; 
       }
-    } else if (!currentDeal.existing_image_url && isEditingDeal && currentDeal.existing_image_path) {
-      await deleteImageFromSupabaseStorage(DEAL_IMAGES_BUCKET, currentDeal.existing_image_path);
+    } else if (!currentDeal.existing_image_url && isEditingDeal && currentDeal.existing_image_public_id) {
+      await deleteImageFromCloudinary(currentDeal.existing_image_public_id);
       imageUrl = null;
-      imagePath = null;
+      imagePublicId = null;
     }
 
     const dealPrice = parseFloat(currentDeal.price);
@@ -164,7 +168,7 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
       deal_description: currentDeal.deal_description.trim() || null,
       price: !isNaN(dealPrice) ? dealPrice : null,
       image_url: imageUrl,
-      image_public_id: imagePath, 
+      image_public_id: imagePublicId, 
       valid_until: currentDeal.valid_until ? new Date(currentDeal.valid_until).toISOString() : null,
     };
 
@@ -195,7 +199,7 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
       toast({ title: "Error deleting deal", description: dbError.message, variant: "destructive" });
     } else {
       if (deal.image_public_id) { 
-        await deleteImageFromSupabaseStorage(DEAL_IMAGES_BUCKET, deal.image_public_id);
+        await deleteImageFromCloudinary(deal.image_public_id);
       }
       toast({ title: "Deal deleted", variant: "default" });
       fetchDeals();
@@ -282,7 +286,7 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
                     variant="destructive" 
                     size="icon" 
                     className="absolute -top-2 -right-2 h-6 w-6"
-                    onClick={() => setCurrentDeal(prev => ({...prev, image_file: null, existing_image_url: null, existing_image_path: null }))}
+                    onClick={() => setCurrentDeal(prev => ({...prev, image_file: null, existing_image_url: null, existing_image_public_id: null }))}
                   >
                     <Trash2 className="h-3 w-3"/>
                   </Button>
