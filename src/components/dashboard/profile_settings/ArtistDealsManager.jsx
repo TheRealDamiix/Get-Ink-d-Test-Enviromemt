@@ -96,11 +96,11 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
 
     try {
         const formDataForUpload = new FormData();
-        formDataForUpload.append('file', file, file.name); // Explicitly pass filename
-        formDataForUpload.append('userId', String(userId)); // Ensure userId is a string
+        formDataForUpload.append('file', file, file.name); 
+        formDataForUpload.append('userId', String(userId)); 
         formDataForUpload.append('folder', folderName);
         if (caption) {
-            formDataForUpload.append('caption', String(caption)); // Ensure caption is a string
+            formDataForUpload.append('caption', String(caption)); 
         }
 
         const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-cloudinary', {
@@ -138,8 +138,13 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
   };
 
   const handleSaveDeal = async () => {
+    // ADDED LOG TO CHECK USER.ID BEFORE UPLOAD
+    console.log("handleSaveDeal: user object before upload:", user);
+    console.log("handleSaveDeal: user.id before upload:", user?.id);
+
     if (!user?.id || !currentDeal.title.trim()) {
-      toast({ title: "Missing title", description: "Deal title cannot be empty.", variant: "destructive" });
+      toast({ title: "Missing title", description: "Deal title cannot be empty or user not logged in.", variant: "destructive" }); // Updated message
+      setIsLoading(false); // Ensure loading state is reset
       return;
     }
     setIsLoading(true);
