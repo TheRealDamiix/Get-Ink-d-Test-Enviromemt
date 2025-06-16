@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'; // Changed this line
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
     price: '',
     image_file: null, 
     existing_image_url: null, 
-    existing_image_public_id: null, // Renamed to public_id for consistency
+    existing_image_public_id: null, 
     valid_until: '' 
   });
   const [isEditingDeal, setIsEditingDeal] = useState(false);
@@ -86,36 +86,38 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
     }
   };
   
-  const uploadImageToCloudinary = async (file, folderName, fileNamePrefix = 'image') => {
-    if (!file || !user) return null;
-    setIsLoading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${fileNamePrefix}_${user.id}_${Date.now()}.${fileExt}`;
-      
-      const formDataForUpload = new FormData();
-      formDataForUpload.append('file', file);
-      formDataForUpload.append('fileName', fileName);
-      formDataForUpload.append('folder', folderName);
+  const uploadImageToCloudinary = async (file, userId, folderName, caption = null) => { // Updated parameters
+    if (!file || !userId) return null;
 
-      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-cloudinary', {
-        body: formDataForUpload,
-      });
-      
-      if (uploadError || !uploadData || !uploadData.secure_url) {
-        let errorMessage = `Failed to upload ${folderName} image.`;
-        if (uploadError?.message) errorMessage = uploadError.message;
-        else if (uploadData?.error) errorMessage = uploadData.error;
-        throw new Error(errorMessage);
-      }
-      return { url: uploadData.secure_url, publicId: uploadData.public_id };
+    setIsLoading(true);
+
+    try {
+        const formDataForUpload = new FormData();
+        formDataForUpload.append('file', file);
+        formDataForUpload.append('userId', userId); // Explicitly add userId
+        formDataForUpload.append('folder', folderName);
+        if (caption) {
+            formDataForUpload.append('caption', caption);
+        }
+
+        const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-cloudinary', {
+            body: formDataForUpload,
+        });
+
+        if (uploadError || !uploadData || !uploadData.secure_url) {
+            let errorMessage = `Failed to upload image.`;
+            if (uploadError?.message) errorMessage = uploadError.message;
+            else if (uploadData?.error) errorMessage = uploadData.error;
+            throw new Error(errorMessage);
+        }
+        return { url: uploadData.secure_url, publicId: uploadData.public_id };
 
     } catch (error) {
-      console.error(`Error uploading to Cloudinary (${folderName}):`, error);
-      toast({ title: "Upload Error", description: `Failed to upload image. ${error.message}`, variant: "destructive" });
-      return null;
+        console.error(`Error uploading to Cloudinary (${folderName}):`, error);
+        toast({ title: "Upload Error", description: `Failed to upload image. ${error.message}`, variant: "destructive" });
+        return null;
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   };
 
@@ -143,7 +145,8 @@ const ArtistDealsManager = ({ user, onDealCreatedOrUpdated }) => {
     let imagePublicId = currentDeal.existing_image_public_id; 
 
     if (currentDeal.image_file) {
-      const uploaded = await uploadImageToCloudinary(currentDeal.image_file, 'deal-images', 'deal');
+      // Pass user.id and currentDeal.deal_description (or title) as caption
+      const uploaded = await uploadImageToCloudinary(currentDeal.image_file, user.id, 'deal-images', currentDeal.deal_description); 
       if (uploaded) {
         imageUrl = uploaded.url;
         imagePublicId = uploaded.publicId;
