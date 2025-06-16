@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import React, { useState, useEffect, useCallback } from 'react';
+import * as React from 'react'; // Changed this line
+import { useState, useEffect, useCallback } from 'react'; // This line might be redundant if using React.*
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
