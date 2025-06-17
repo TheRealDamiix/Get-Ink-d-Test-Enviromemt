@@ -42,7 +42,6 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
 
   const uploadImageToCloudinary = async (file) => {
     if (!file || !user) return null;
-    setIsSubmitting(true); 
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -63,7 +62,6 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
       console.error('Error uploading booking reference to Cloudinary:', error);
       toast({ title: "Upload Error", description: `Failed to upload image. ${error.message}`, variant: "destructive" });
       return null;
-    } finally {
     }
   };
 
@@ -211,21 +209,4 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
               type="button"
               variant="ghost"
               size="icon"
-              className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background/70 hover:bg-destructive/90 group"
-              onClick={removeImage}
-              disabled={isSubmitting}
-            >
-              <XCircle className="h-4 w-4 text-destructive group-hover:text-destructive-foreground" />
-            </Button>
-          </div>
-        )}
-      </div>
-      
-      <Button type="submit" className="w-full ink-gradient" disabled={isSubmitting}>
-        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Send Booking Request'}
-      </Button>
-    </form>
-  );
-};
-
-export default BookingRequestForm;
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background
