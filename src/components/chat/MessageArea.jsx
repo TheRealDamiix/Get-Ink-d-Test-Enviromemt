@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
-
 const MessageBubble = ({ msg, currentUserId, onImageClick }) => {
     const isCurrentUser = msg.sender_id === currentUserId;
     return (
@@ -27,13 +26,11 @@ const MessageBubble = ({ msg, currentUserId, onImageClick }) => {
                 : 'bg-muted rounded-bl-none'
             }`}
         >
-            {/* Updated to only show content if it exists */}
             {msg.content && <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>}
             
             {msg.image_url && (
                 <button 
                     onClick={() => onImageClick(msg.image_url)} 
-                    // Remove margin-top if there's no text content
                     className={cn("cursor-pointer block", msg.content && "mt-2")}
                 >
                     <img src={msg.image_url} alt="Chat attachment" className="rounded-md max-w-[200px] max-h-[200px] object-cover border border-border/50" />
@@ -47,180 +44,4 @@ const MessageBubble = ({ msg, currentUserId, onImageClick }) => {
     );
 };
 
-const MessageArea = ({ conversationId, currentUserId }) => {
-    const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState('');
-    const [attachedImageFile, setAttachedImageFile] = useState(null);
-    const [attachedImagePreview, setAttachedImagePreview] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isSending, setIsSending] = useState(false);
-    const [otherUser, setOtherUser] = useState(null);
-    const [imageToPreview, setImageToPreview] = useState(null);
-    const messagesEndRef = useRef(null);
-    const imageInputRef = useRef(null);
-    const { toast } = useToast();
-    const { fetchUnreadCount } = useAuth();
-
-    const scrollToBottom = useCallback(() => {
-        messagesEndRef.current?.scrollIntoView();
-    }, []);
-
-    const fetchMessagesAndDetails = useCallback(async () => {
-        if (!conversationId || !currentUserId) return;
-        setIsLoading(true);
-        try {
-            const { data: convData } = await supabase.from('conversations').select('*, user1:profiles!user1_id(*), user2:profiles!user2_id(*)').eq('id', conversationId).single();
-            setOtherUser(convData.user1_id === currentUserId ? convData.user2 : convData.user1);
-
-            const { data: messagesData } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
-            setMessages(messagesData || []);
-            
-            const { error: updateError } = await supabase.from('messages').update({ is_read: true }).eq('conversation_id', conversationId).eq('receiver_id', currentUserId);
-            if (!updateError) fetchUnreadCount(currentUserId);
-        } catch (error) {
-            toast({ title: "Error", description: "Could not load messages.", variant: "destructive" });
-        } finally {
-            setIsLoading(false);
-        }
-    }, [conversationId, currentUserId, toast, fetchUnreadCount]);
-
-    useEffect(() => {
-        fetchMessagesAndDetails();
-    }, [fetchMessagesAndDetails]);
-
-    useEffect(scrollToBottom, [messages]);
-  
-    useEffect(() => {
-        if (!conversationId) return;
-        const channel = supabase.channel(`messages:${conversationId}`);
-        const subscription = channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
-            (payload) => {
-                setMessages(prev => [...prev, payload.new]);
-                if (payload.new.receiver_id === currentUserId) {
-                    supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id).then(() => fetchUnreadCount(currentUserId));
-                }
-            }
-        ).subscribe();
-    
-        return () => supabase.removeChannel(channel);
-    }, [conversationId, currentUserId, fetchUnreadCount]);
-
-    const handleImageAttachment = (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            if (file.size > 5 * 1024 * 1024) {
-                toast({ title: "Image too large", description: "Image must be less than 5MB.", variant: "destructive" });
-                return;
-            }
-            setAttachedImageFile(file);
-            setAttachedImagePreview(URL.createObjectURL(file));
-        }
-    };
-    
-    const removeAttachedImage = () => {
-        setAttachedImageFile(null);
-        setAttachedImagePreview(null);
-        if (imageInputRef.current) imageInputRef.current.value = '';
-    };
-
-    const uploadImage = async (file) => {
-        if (!file || !currentUserId) return null;
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('folder', 'chat_images');
-            const { data, error } = await supabase.functions.invoke('upload-to-cloudinary', { body: formData });
-            if (error || data.error) throw new Error(error?.message || data.error);
-            return { url: data.secure_url, publicId: data.public_id };
-        } catch (error) {
-            toast({ title: "Upload Error", description: `Failed to upload image: ${error.message}`, variant: "destructive" });
-            return null;
-        }
-    };
-    
-    const handleSendMessage = async (e) => {
-        e.preventDefault();
-        if ((!newMessage.trim() && !attachedImageFile) || !otherUser) return;
-        setIsSending(true);
-
-        let imageUrl = null;
-        let imagePublicId = null;
-
-        if (attachedImageFile) {
-            const uploaded = await uploadImage(attachedImageFile);
-            if (uploaded) {
-                imageUrl = uploaded.url;
-                imagePublicId = uploaded.publicId;
-            } else {
-                setIsSending(false);
-                return;
-            }
-        }
-        
-        // **This is the fix: content is set to null if the message text is empty.**
-        const contentToSend = newMessage.trim() || null;
-
-        const { error } = await supabase.from('messages').insert({
-            conversation_id: conversationId,
-            sender_id: currentUserId,
-            receiver_id: otherUser.id,
-            content: contentToSend,
-            image_url: imageUrl,
-            image_public_id: imagePublicId,
-        });
-
-        if (error) {
-            toast({ title: "Error", description: "Could not send message.", variant: "destructive" });
-        } else {
-            setNewMessage('');
-            removeAttachedImage();
-        }
-        setIsSending(false);
-    };
-
-    if (isLoading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-    if (!otherUser) return <div className="flex items-center justify-center h-full"><AlertTriangle className="w-8 h-8 text-destructive" /> <p className="ml-2">Could not load conversation.</p></div>;
-
-    return (
-        <>
-            <div className="flex flex-col h-full bg-background/50">
-                <header className="p-3 border-b border-border/50 flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                        <AvatarImage src={otherUser.profile_photo_url} alt={otherUser.name || otherUser.username} />
-                        <AvatarFallback>{(otherUser.name || otherUser.username)?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <h3 className="font-semibold">{otherUser.name || otherUser.username}</h3>
-                </header>
-                <main className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                    {messages.map((msg) => (
-                        <MessageBubble key={msg.id} msg={msg} currentUserId={currentUserId} onImageClick={setImageToPreview} />
-                    ))}
-                    <div ref={messagesEndRef} />
-                </main>
-                <footer className="p-4 border-t border-border/50">
-                    {attachedImagePreview && (
-                        <div className="mb-2 relative w-20 h-20">
-                            <img src={attachedImagePreview} alt="Preview" className="rounded-md object-cover w-full h-full" />
-                            <Button type="button" variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background/80 hover:bg-destructive" onClick={removeAttachedImage} disabled={isSending}>
-                                <XCircle className="h-4 w-4 text-destructive-foreground" />
-                            </Button>
-                        </div>
-                    )}
-                    <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                        <Input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleImageAttachment} disabled={isSending} />
-                        <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isSending}><Paperclip className="w-5 h-5" /></Button>
-                        <Input type="text" placeholder="Type a message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={isSending} className="flex-1" />
-                        <Button type="submit" className="ink-gradient" disabled={isSending || (!newMessage.trim() && !attachedImageFile)}><Send className="w-4 h-4" /></Button>
-                    </form>
-                </footer>
-            </div>
-            {imageToPreview && (
-                <Dialog open={!!imageToPreview} onOpenChange={() => setImageToPreview(null)}>
-                <DialogContent className="max-w-3xl p-2 glass-effect"><img src={imageToPreview} alt="Chat Preview" className="rounded-md max-h-[80vh] w-auto mx-auto" /></DialogContent>
-                </Dialog>
-            )}
-        </>
-    );
-};
-
-export default MessageArea;
+const MessageArea = ({ conversationId, current
