@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { CalendarDays, MapPin, Loader2, BookOpen, BookLock, CalendarPlus } from 'lucide-react';
@@ -18,6 +17,7 @@ const ConventionDatesSection = ({ artistId, artistProfile }) => {
   const navigate = useNavigate();
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [selectedConventionForBooking, setSelectedConventionForBooking] = useState(null);
+  const newLogoUrl = "https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png";
 
   useEffect(() => {
     const fetchConventionDates = async () => {
@@ -43,8 +43,12 @@ const ConventionDatesSection = ({ artistId, artistProfile }) => {
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const date = new Date(dateString);
+    // Adjust for timezone offset to display the date as it was entered
+    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() + userTimezoneOffset).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
+  
 
   const handleRequestBookingForConvention = (convention) => {
     if (!user) {
@@ -92,7 +96,7 @@ const ConventionDatesSection = ({ artistId, artistProfile }) => {
         className="my-8 p-6 glass-effect rounded-xl"
       >
         <h2 className="text-2xl font-bold mb-6 flex items-center">
-          <CalendarDays className="w-6 h-6 mr-3 text-primary text-foreground" />
+          <CalendarDays className="w-6 h-6 mr-3 text-primary" />
           Convention & Guest Spot Dates
         </h2>
         <div className="space-y-4">
@@ -117,12 +121,12 @@ const ConventionDatesSection = ({ artistId, artistProfile }) => {
                 <div className="flex items-center gap-2 mt-2 text-xs">
                   {event.accepting_bookings ? (
                     event.is_fully_booked ? (
-                      <span className="flex items-center text-orange-500"><BookLock className="w-3 h-3 mr-1 text-foreground" /> Fully Booked</span>
+                      <span className="flex items-center text-orange-500"><BookLock className="w-3 h-3 mr-1" /> Fully Booked</span>
                     ) : (
-                      <span className="flex items-center text-green-500"><BookOpen className="w-3 h-3 mr-1 text-foreground" /> Accepting Bookings</span>
+                      <span className="flex items-center text-green-500"><BookOpen className="w-3 h-3 mr-1" /> Accepting Bookings</span>
                     )
                   ) : (
-                    <span className="flex items-center text-red-500"><BookLock className="w-3 h-3 mr-1 text-foreground" /> Bookings Closed</span>
+                    <span className="flex items-center text-red-500"><BookLock className="w-3 h-3 mr-1" /> Bookings Closed</span>
                   )}
                 </div>
               </div>
@@ -132,7 +136,7 @@ const ConventionDatesSection = ({ artistId, artistProfile }) => {
                   className="ink-gradient mt-2 sm:mt-0"
                   onClick={() => handleRequestBookingForConvention(event)}
                 >
-                  <CalendarPlus className="w-4 h-4 mr-2 text-white" /> Request Booking
+                  <CalendarPlus className="w-4 h-4 mr-2" /> Request Booking
                 </Button>
               )}
             </motion.div>
@@ -141,23 +145,29 @@ const ConventionDatesSection = ({ artistId, artistProfile }) => {
       </motion.div>
 
       <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
-        <DialogContent className="glass-effect max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Request Booking for {selectedConventionForBooking?.event_name}</DialogTitle>
-            <DialogDescription>
-              Fill out the form to request a booking with {artistProfile?.name || artistProfile?.username} during this event.
-              Event Dates: {formatDate(selectedConventionForBooking?.start_date)} {selectedConventionForBooking?.end_date ? ` - ${formatDate(selectedConventionForBooking?.end_date)}` : ''}
-            </DialogDescription>
-          </DialogHeader>
-          <BookingRequestForm 
-            artistId={artistId} 
-            artistName={artistProfile?.name || artistProfile?.username}
-            conventionDateId={selectedConventionForBooking?.id}
-            onSubmitSuccess={() => {
-              setShowBookingDialog(false);
-              toast({ title: "Booking Request Sent!", description: "The artist will review your request soon."});
-            }}
-          />
+        <DialogContent className="glass-effect p-0 relative flex flex-col max-h-[90vh]">
+            <div 
+                style={{ backgroundImage: `url(${newLogoUrl})` }} 
+                className="absolute inset-0 bg-center bg-contain bg-no-repeat opacity-5 z-0"
+            />
+            <div className="relative z-10 p-6 space-y-4 overflow-y-auto custom-scrollbar">
+                <DialogHeader>
+                    <DialogTitle>Request Booking for {selectedConventionForBooking?.event_name}</DialogTitle>
+                    <DialogDescription>
+                        Fill out the form to request a booking with {artistProfile?.name || artistProfile?.username} during this event.
+                        Event Dates: {formatDate(selectedConventionForBooking?.start_date)} {selectedConventionForBooking?.end_date ? ` - ${formatDate(selectedConventionForBooking?.end_date)}` : ''}
+                    </DialogDescription>
+                </DialogHeader>
+                <BookingRequestForm 
+                    artistId={artistId} 
+                    artistName={artistProfile?.name || artistProfile?.username}
+                    conventionDateId={selectedConventionForBooking?.id}
+                    onSubmitSuccess={() => {
+                        setShowBookingDialog(false);
+                        toast({ title: "Booking Request Sent!", description: "The artist will review your request soon."});
+                    }}
+                />
+            </div>
         </DialogContent>
       </Dialog>
     </>
