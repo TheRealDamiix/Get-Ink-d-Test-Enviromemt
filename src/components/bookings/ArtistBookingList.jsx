@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, CalendarCheck, Inbox, UserCircle, Clock, CheckCircle, XCircle, Image as ImageIcon, Phone } from 'lucide-react';
+import { Loader2, CalendarCheck, Inbox, UserCircle, Clock, CheckCircle, XCircle, Image as ImageIcon, Phone, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +25,7 @@ const ArtistBookingList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [actionType, setActionType] = useState(''); 
+  const [bookingDuration, setBookingDuration] = useState(60);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
   const [imageToPreview, setImageToPreview] = useState(null);
 
@@ -51,14 +54,17 @@ const ArtistBookingList = () => {
     if (!selectedBooking || !actionType) return;
     setIsProcessingAction(true);
 
-    let newStatus = '';
+    const updatePayload = {
+      updated_at: new Date().toISOString()
+    };
     let successMessage = '';
 
     if (actionType === 'confirm') {
-      newStatus = 'confirmed';
+      updatePayload.status = 'confirmed';
+      updatePayload.duration_minutes = bookingDuration;
       successMessage = 'Booking confirmed!';
     } else if (actionType === 'decline') {
-      newStatus = 'declined_by_artist';
+      updatePayload.status = 'declined_by_artist';
       successMessage = 'Booking declined.';
     } else {
       setIsProcessingAction(false);
@@ -68,7 +74,7 @@ const ArtistBookingList = () => {
     try {
       const { data, error } = await supabase
         .from('bookings')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', selectedBooking.id)
         .select()
         .single();
@@ -90,6 +96,9 @@ const ArtistBookingList = () => {
   const openActionDialog = (booking, type) => {
     setSelectedBooking(booking);
     setActionType(type);
+    if (type === 'confirm') {
+      setBookingDuration(60); // Reset to default when opening
+    }
   };
 
   const formatDate = (dateString) => {
@@ -139,14 +148,20 @@ const ArtistBookingList = () => {
                   booking.status.includes('declined') || booking.status.includes('cancelled') ? 'text-red-500' : 'text-foreground'
                 }`}>{booking.status.replace(/_/g, ' ')}</span>
               </p>
+              {booking.status === 'confirmed' && booking.duration_minutes && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  <Timer className="w-4 h-4 inline mr-1.5 text-foreground" />
+                  Duration: {booking.duration_minutes} minutes
+                </p>
+              )}
             </div>
             {booking.status === 'pending' && (
               <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0 self-start sm:self-center">
                 <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white" onClick={() => openActionDialog(booking, 'confirm')}>
-                  <CheckCircle className="w-4 h-4 mr-2 text-white" /> Confirm
+                  <CheckCircle className="w-4 h-4 mr-2" /> Confirm
                 </Button>
                 <Button size="sm" variant="destructive" onClick={() => openActionDialog(booking, 'decline')}>
-                  <XCircle className="w-4 h-4 mr-2 text-white" /> Decline
+                  <XCircle className="w-4 h-4 mr-2" /> Decline
                 </Button>
               </div>
             )}
@@ -173,11 +188,24 @@ const ArtistBookingList = () => {
               Are you sure you want to {actionType} this booking request from {selectedBooking?.client?.name || 'this client'} for {formatDate(selectedBooking?.requested_datetime)}?
             </DialogDescription>
           </DialogHeader>
+          {actionType === 'confirm' && (
+            <div className="space-y-2 py-4">
+                <Label htmlFor="duration">Set Appointment Duration (minutes)</Label>
+                <Input
+                    id="duration"
+                    type="number"
+                    value={bookingDuration}
+                    onChange={(e) => setBookingDuration(parseInt(e.target.value, 10) || 0)}
+                    placeholder="e.g., 60"
+                />
+            </div>
+          )}
           <DialogFooter>
             <DialogClose asChild><Button variant="outline" disabled={isProcessingAction}>Back</Button></DialogClose>
             <Button 
               onClick={handleAction} 
-              className={actionType === 'confirm' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}
+              className={actionType === 'confirm' ? 'bg-green-500 hover:bg-green-600' : ''}
+              variant={actionType === 'decline' ? 'destructive' : 'default'}
               disabled={isProcessingAction}
             >
               {isProcessingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Yes, ${actionType}`}
