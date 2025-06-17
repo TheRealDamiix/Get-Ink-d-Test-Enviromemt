@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -207,7 +206,7 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
         </div>
         {referenceImagePreview && (
           <div className="mt-2 relative w-32 h-32">
-            <img-replace src={referenceImagePreview} alt="Reference preview" className="rounded-md object-cover w-full h-full" />
+            <img src={referenceImagePreview} alt="Reference preview" className="rounded-md object-cover w-full h-full" />
             <Button
               type="button"
               variant="ghost"
