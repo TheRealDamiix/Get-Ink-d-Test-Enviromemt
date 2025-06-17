@@ -213,4 +213,27 @@ const MessageArea = ({ conversationId, currentUserId }) => {
                 <footer className="p-4 border-t border-border/50">
                     {attachedImagePreview && (
                         <div className="mb-2 relative w-20 h-20">
-                            <img src={attachedImagePreview} alt
+                            <img src={attachedImagePreview} alt="Preview" className="rounded-md object-cover w-full h-full" />
+                            <Button type="button" variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background/80 hover:bg-destructive" onClick={removeAttachedImage} disabled={isSending}>
+                                <XCircle className="h-4 w-4 text-destructive-foreground" />
+                            </Button>
+                        </div>
+                    )}
+                    <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                        <Input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleImageAttachment} disabled={isSending} />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isSending}><Paperclip className="w-5 h-5" /></Button>
+                        <Input type="text" placeholder="Type a message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={isSending} className="flex-1" />
+                        <Button type="submit" className="ink-gradient" disabled={isSending || (!newMessage.trim() && !attachedImageFile)}><Send className="w-4 h-4" /></Button>
+                    </form>
+                </footer>
+            </div>
+            {imageToPreview && (
+                <Dialog open={!!imageToPreview} onOpenChange={() => setImageToPreview(null)}>
+                <DialogContent className="max-w-3xl p-2 glass-effect"><img src={imageToPreview} alt="Chat Preview" className="rounded-md max-h-[80vh] w-auto mx-auto" /></DialogContent>
+                </Dialog>
+            )}
+        </>
+    );
+};
+
+export default MessageArea;
