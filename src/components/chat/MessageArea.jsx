@@ -8,15 +8,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+
 
 const MessageBubble = ({ msg, currentUserId, onImageClick }) => {
     const isCurrentUser = msg.sender_id === currentUserId;
     return (
         <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
-        className={`flex items-end gap-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className={`flex items-end gap-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
         >
         <div 
             className={`max-w-[75%] px-3 py-2 rounded-xl shadow-md ${
@@ -25,14 +27,20 @@ const MessageBubble = ({ msg, currentUserId, onImageClick }) => {
                 : 'bg-muted rounded-bl-none'
             }`}
         >
-            {msg.content && msg.content !== "[Image]" && <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>}
+            {/* Updated to only show content if it exists */}
+            {msg.content && <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>}
+            
             {msg.image_url && (
-            <button onClick={() => onImageClick(msg.image_url)} className="mt-2 cursor-pointer block">
-                <img src={msg.image_url} alt="Chat attachment" className="rounded-md max-w-[200px] max-h-[200px] object-cover border border-border/50" />
-            </button>
+                <button 
+                    onClick={() => onImageClick(msg.image_url)} 
+                    // Remove margin-top if there's no text content
+                    className={cn("cursor-pointer block", msg.content && "mt-2")}
+                >
+                    <img src={msg.image_url} alt="Chat attachment" className="rounded-md max-w-[200px] max-h-[200px] object-cover border border-border/50" />
+                </button>
             )}
             <p className={`text-xs mt-1.5 ${isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'} text-right`}>
-            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </p>
         </div>
         </motion.div>
@@ -61,23 +69,14 @@ const MessageArea = ({ conversationId, currentUserId }) => {
         if (!conversationId || !currentUserId) return;
         setIsLoading(true);
         try {
-            const { data: convData, error: convError } = await supabase
-                .from('conversations').select('*, user1:profiles!user1_id(*), user2:profiles!user2_id(*)').eq('id', conversationId).single();
-            if (convError) throw convError;
-            
+            const { data: convData } = await supabase.from('conversations').select('*, user1:profiles!user1_id(*), user2:profiles!user2_id(*)').eq('id', conversationId).single();
             setOtherUser(convData.user1_id === currentUserId ? convData.user2 : convData.user1);
 
-            const { data: messagesData, error: messagesError } = await supabase
-                .from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
-            if (messagesError) throw messagesError;
-
+            const { data: messagesData } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
             setMessages(messagesData || []);
             
-            // Mark messages as read and update the global notification count
             const { error: updateError } = await supabase.from('messages').update({ is_read: true }).eq('conversation_id', conversationId).eq('receiver_id', currentUserId);
-            if (!updateError) {
-                fetchUnreadCount(currentUserId);
-            }
+            if (!updateError) fetchUnreadCount(currentUserId);
         } catch (error) {
             toast({ title: "Error", description: "Could not load messages.", variant: "destructive" });
         } finally {
@@ -91,20 +90,14 @@ const MessageArea = ({ conversationId, currentUserId }) => {
 
     useEffect(scrollToBottom, [messages]);
   
-    // Real-time subscription for new messages
     useEffect(() => {
         if (!conversationId) return;
         const channel = supabase.channel(`messages:${conversationId}`);
-        const subscription = channel.on(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+        const subscription = channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
             (payload) => {
-                // Add new message to state and mark as read if it's for the current user
                 setMessages(prev => [...prev, payload.new]);
                 if (payload.new.receiver_id === currentUserId) {
-                    supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id).then(() => {
-                        fetchUnreadCount(currentUserId);
-                    });
+                    supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id).then(() => fetchUnreadCount(currentUserId));
                 }
             }
         ).subscribe();
@@ -145,7 +138,6 @@ const MessageArea = ({ conversationId, currentUserId }) => {
         }
     };
     
-    // **This function is now simplified and more reliable**
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if ((!newMessage.trim() && !attachedImageFile) || !otherUser) return;
@@ -161,13 +153,13 @@ const MessageArea = ({ conversationId, currentUserId }) => {
                 imagePublicId = uploaded.publicId;
             } else {
                 setIsSending(false);
-                return; // Stop if upload fails
+                return;
             }
         }
+        
+        // **This is the fix: content is set to null if the message text is empty.**
+        const contentToSend = newMessage.trim() || null;
 
-        const contentToSend = newMessage.trim() || "[Image]";
-
-        // Just insert the message. The real-time subscription will handle adding it to the UI.
         const { error } = await supabase.from('messages').insert({
             conversation_id: conversationId,
             sender_id: currentUserId,
@@ -180,7 +172,6 @@ const MessageArea = ({ conversationId, currentUserId }) => {
         if (error) {
             toast({ title: "Error", description: "Could not send message.", variant: "destructive" });
         } else {
-            // Clear inputs on successful send
             setNewMessage('');
             removeAttachedImage();
         }
@@ -219,9 +210,7 @@ const MessageArea = ({ conversationId, currentUserId }) => {
                         <Input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleImageAttachment} disabled={isSending} />
                         <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isSending}><Paperclip className="w-5 h-5" /></Button>
                         <Input type="text" placeholder="Type a message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={isSending} className="flex-1" />
-                        <Button type="submit" className="ink-gradient" disabled={isSending || (!newMessage.trim() && !attachedImageFile)}>
-                          {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        </Button>
+                        <Button type="submit" className="ink-gradient" disabled={isSending || (!newMessage.trim() && !attachedImageFile)}><Send className="w-4 h-4" /></Button>
                     </form>
                 </footer>
             </div>
