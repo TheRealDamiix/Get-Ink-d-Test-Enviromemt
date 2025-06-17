@@ -44,4 +44,52 @@ const MessageBubble = ({ msg, currentUserId, onImageClick }) => {
     );
 };
 
-const MessageArea = ({ conversationId, current
+const MessageArea = ({ conversationId, currentUserId }) => {
+    const [messages, setMessages] = useState([]);
+    const [newMessage, setNewMessage] = useState('');
+    const [attachedImageFile, setAttachedImageFile] = useState(null);
+    const [attachedImagePreview, setAttachedImagePreview] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+    const [otherUser, setOtherUser] = useState(null);
+    const [imageToPreview, setImageToPreview] = useState(null);
+    const messagesEndRef = useRef(null);
+    const imageInputRef = useRef(null);
+    const { toast } = useToast();
+    const { fetchUnreadCount } = useAuth();
+
+    const scrollToBottom = useCallback(() => {
+        messagesEndRef.current?.scrollIntoView();
+    }, []);
+
+    const fetchMessagesAndDetails = useCallback(async () => {
+        if (!conversationId || !currentUserId) return;
+        setIsLoading(true);
+        try {
+            const { data: convData } = await supabase.from('conversations').select('*, user1:profiles!user1_id(*), user2:profiles!user2_id(*)').eq('id', conversationId).single();
+            setOtherUser(convData.user1_id === currentUserId ? convData.user2 : convData.user1);
+
+            const { data: messagesData } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
+            setMessages(messagesData || []);
+            
+            const { error: updateError } = await supabase.from('messages').update({ is_read: true }).eq('conversation_id', conversationId).eq('receiver_id', currentUserId);
+            if (!updateError) fetchUnreadCount(currentUserId);
+        } catch (error) {
+            toast({ title: "Error", description: "Could not load messages.", variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [conversationId, currentUserId, toast, fetchUnreadCount]);
+
+    useEffect(() => {
+        fetchMessagesAndDetails();
+    }, [fetchMessagesAndDetails]);
+
+    useEffect(scrollToBottom, [messages]);
+  
+    useEffect(() => {
+        if (!conversationId) return;
+        const channel = supabase.channel(`messages:${conversationId}`);
+        const subscription = channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+            (payload) => {
+                setMessages(prev =>
