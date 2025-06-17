@@ -15,15 +15,15 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
   const [serviceDescription, setServiceDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [clientPhoneNumber, setClientPhoneNumber] = useState('');
-  const [referenceImageFile, setReferenceImageFile] = useState(null); 
-  const [referenceImagePreview, setReferenceImagePreview] = useState(null); 
+  const [referenceImageFile, setReferenceImageFile] = useState(null);
+  const [referenceImagePreview, setReferenceImagePreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef(null); 
+  const fileInputRef = useRef(null);
 
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) { 
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
         toast({ title: "Image too large", description: "Image must be less than 5MB.", variant: "destructive" });
         return;
       }
@@ -52,14 +52,12 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
         body: formData,
       });
 
-      if (uploadError || uploadData.error || !uploadData.secure_url) {
-        const errorMessage = uploadError?.message || uploadData?.error || 'Failed to upload booking reference image.';
-        throw new Error(errorMessage);
+      if (uploadError || uploadData.error) {
+        throw new Error(uploadError?.message || uploadData?.error || 'Failed to upload booking reference image.');
       }
       return { url: uploadData.secure_url, publicId: uploadData.public_id };
 
     } catch (error) {
-      console.error('Error uploading booking reference to Cloudinary:', error);
       toast({ title: "Upload Error", description: `Failed to upload image. ${error.message}`, variant: "destructive" });
       return null;
     }
@@ -78,7 +76,7 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
     setIsSubmitting(true);
     
     let imageUrl = null;
-    let imagePublicId = null; 
+    let imagePublicId = null;
     if (referenceImageFile) {
       const uploaded = await uploadImageToCloudinary(referenceImageFile);
       if (uploaded) {
@@ -91,7 +89,7 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
     }
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('bookings')
         .insert({
           client_id: user.id,
@@ -102,8 +100,8 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
           client_phone_number: clientPhoneNumber.trim() || null,
           status: 'pending',
           convention_date_id: conventionDateId || null,
-          reference_image_url: imageUrl, 
-          reference_image_public_id: imagePublicId, 
+          reference_image_url: imageUrl,
+          reference_image_public_id: imagePublicId,
         });
 
       if (error) throw error;
@@ -117,10 +115,9 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
       setServiceDescription('');
       setNotes('');
       setClientPhoneNumber('');
-      removeImage(); 
+      removeImage();
 
     } catch (error) {
-      console.error("Error submitting booking request:", error);
       toast({
         title: "Submission Failed",
         description: error.message || "Could not send booking request. Please try again.",
@@ -209,4 +206,21 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
               type="button"
               variant="ghost"
               size="icon"
-              className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background/70 hover:bg-destructive/90 group"
+              onClick={removeImage}
+              disabled={isSubmitting}
+            >
+              <XCircle className="h-4 w-4 text-destructive group-hover:text-destructive-foreground" />
+            </Button>
+          </div>
+        )}
+      </div>
+      
+      <Button type="submit" className="w-full ink-gradient" disabled={isSubmitting}>
+        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Send Booking Request'}
+      </Button>
+    </form>
+  );
+};
+
+export default BookingRequestForm;
