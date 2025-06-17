@@ -11,7 +11,6 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 const MessageBubble = ({ msg, currentUserId, onImageClick }) => {
-    // This component's code remains the same
     const isCurrentUser = msg.sender_id === currentUserId;
     return (
         <motion.div
@@ -49,47 +48,142 @@ const MessageArea = ({ conversationId, currentUserId, onMessageSent }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [otherUser, setOtherUser] = useState(null);
+    const [loadError, setLoadError] = useState(null);
     const [imageToPreview, setImageToPreview] = useState(null);
     const messagesEndRef = useRef(null);
     const imageInputRef = useRef(null);
     const { toast } = useToast();
     const { fetchUnreadCount } = useAuth();
 
-    // Updated auto-scroll logic for better reliability
     const scrollToBottom = useCallback(() => {
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: "auto", block: "end" });
-        }
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
     }, []);
 
-    const fetchMessagesAndDetails = useCallback(async () => {
-        // ... (this function remains the same as before)
+    useEffect(() => {
+        const fetchMessagesAndDetails = async () => {
+            if (!conversationId || !currentUserId) return;
+            setIsLoading(true);
+            setLoadError(null);
+            try {
+                // **FIX: Using a left join to be more resilient against broken foreign keys (e.g., deleted users)**
+                const { data: convData, error: convError } = await supabase
+                    .from('conversations')
+                    .select('*, user1:profiles!left!user1_id(*), user2:profiles!left!user2_id(*)')
+                    .eq('id', conversationId)
+                    .single();
+
+                if (convError) throw convError;
+                
+                const partner = convData.user1_id === currentUserId ? convData.user2 : convData.user1;
+                if (!partner) {
+                    throw new Error("Conversation partner could not be found.");
+                }
+                setOtherUser(partner);
+
+                const { data: messagesData, error: messagesError } = await supabase
+                    .from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
+                if (messagesError) throw messagesError;
+                setMessages(messagesData || []);
+                
+                await supabase.from('messages').update({ is_read: true }).eq('conversation_id', conversationId).eq('receiver_id', currentUserId);
+                fetchUnreadCount(currentUserId);
+            } catch (error) {
+                console.error("Error loading chat:", error);
+                setLoadError("Could not load this conversation. The user may no longer exist, or there may be a network issue.");
+                toast({ title: "Error Loading Chat", description: error.message, variant: "destructive" });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchMessagesAndDetails();
     }, [conversationId, currentUserId, toast, fetchUnreadCount]);
 
     useEffect(() => {
-        fetchMessagesAndDetails();
-    }, [fetchMessagesAndDetails]);
-
-    // This useEffect now uses a small timeout to ensure the DOM is ready before scrolling
-    useEffect(() => {
-        const timer = setTimeout(() => {
+        if (!isLoading) {
             scrollToBottom();
-        }, 50); // A small delay to ensure the new message is rendered
-        return () => clearTimeout(timer);
-    }, [messages, scrollToBottom]);
+        }
+    }, [messages, isLoading, scrollToBottom]);
 
     useEffect(() => {
-        // ... (real-time subscription logic remains the same)
+        if (!conversationId || !currentUserId) return;
+        const channel = supabase.channel(`messages:${conversationId}`);
+        const subscription = channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+            (payload) => {
+                if (payload.new.sender_id !== currentUserId) {
+                    setMessages(prev => [...prev, payload.new]);
+                }
+            }
+        ).subscribe();
+        return () => supabase.removeChannel(channel);
     }, [conversationId, currentUserId]);
 
     const handleSendMessage = async (e) => {
-        // ... (this function's logic remains the same as before)
+        e.preventDefault();
+        if ((!newMessage.trim() && !attachedImageFile) || !otherUser) return;
+        setIsSending(true);
+
+        let imageUrl = null, imagePublicId = null;
+        if (attachedImageFile) {
+            const formData = new FormData();
+            formData.append('file', attachedImageFile);
+            formData.append('folder', 'chat_images');
+            const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-cloudinary', { body: formData });
+            
+            if (uploadError || uploadData.error) {
+                toast({ title: "Upload Error", description: `Failed to upload image: ${uploadError?.message || uploadData.error}`, variant: "destructive" });
+                setIsSending(false);
+                return;
+            }
+            imageUrl = uploadData.secure_url;
+            imagePublicId = uploadData.public_id;
+        }
+
+        const contentToSend = newMessage.trim() || (imageUrl ? "[Image]" : null);
+        if (!contentToSend) { setIsSending(false); return; }
+
+        const { data: sentMessage, error } = await supabase.from('messages').insert({
+            conversation_id: conversationId,
+            sender_id: currentUserId,
+            receiver_id: otherUser.id,
+            content: contentToSend,
+            image_url: imageUrl,
+            image_public_id: imagePublicId,
+        }).select().single();
+
+        if (error) {
+            toast({ title: "Error", description: "Could not send message.", variant: "destructive" });
+        } else {
+            setMessages(prev => [...prev, sentMessage]);
+            if (onMessageSent) onMessageSent();
+            setNewMessage('');
+            if (imageInputRef.current) imageInputRef.current.value = '';
+            setAttachedImageFile(null);
+            setAttachedImagePreview(null);
+        }
+        setIsSending(false);
     };
 
-    // ... (other helper functions like handleImageAttachment remain the same)
+    const handleImageAttachment = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+                toast({ title: "Image too large", description: "Image must be less than 5MB.", variant: "destructive" });
+                return;
+            }
+            setAttachedImageFile(file);
+            setAttachedImagePreview(URL.createObjectURL(file));
+        }
+    };
+    
+    const removeAttachedImage = () => {
+        setAttachedImageFile(null);
+        setAttachedImagePreview(null);
+        if (imageInputRef.current) imageInputRef.current.value = '';
+    };
 
     if (isLoading) return <div className="flex-1 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-    if (!otherUser) return <div className="flex-1 flex items-center justify-center"><AlertTriangle className="w-8 h-8 text-destructive" /> <p className="ml-2">Could not load conversation.</p></div>;
+    if (loadError) return <div className="flex-1 flex flex-col items-center justify-center text-center p-4"><AlertTriangle className="w-12 h-12 text-destructive mb-4" /> <h3 className="font-semibold text-lg">Failed to Load Conversation</h3><p className="text-sm text-muted-foreground">{loadError}</p></div>;
+    if (!otherUser) return <div className="flex-1 flex items-center justify-center"><AlertTriangle className="w-8 h-8 text-destructive" /> <p className="ml-2">Could not load conversation partner.</p></div>;
 
     return (
         <div className="flex flex-col h-full bg-background/50 flex-1">
@@ -105,7 +199,20 @@ const MessageArea = ({ conversationId, currentUserId, onMessageSent }) => {
                 <div ref={messagesEndRef} />
             </main>
             <footer className="p-4 border-t border-border/50 flex-shrink-0">
-                {/* ... (footer JSX remains the same) ... */}
+                {attachedImagePreview && (
+                    <div className="mb-2 relative w-20 h-20">
+                        <img src={attachedImagePreview} alt="Preview" className="rounded-md object-cover w-full h-full" />
+                        <Button type="button" variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background/80 hover:bg-destructive" onClick={removeAttachedImage} disabled={isSending}>
+                            <XCircle className="h-4 w-4 text-destructive-foreground" />
+                        </Button>
+                    </div>
+                )}
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                    <Input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleImageAttachment} disabled={isSending} />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isSending}><Paperclip className="w-5 h-5" /></Button>
+                    <Input type="text" placeholder="Type a message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={isSending} className="flex-1" />
+                    <Button type="submit" className="ink-gradient" disabled={isSending || (!newMessage.trim() && !attachedImageFile)}><Send className="w-4 h-4" /></Button>
+                </form>
             </footer>
             {imageToPreview && (
                 <Dialog open={!!imageToPreview} onOpenChange={() => setImageToPreview(null)}>
