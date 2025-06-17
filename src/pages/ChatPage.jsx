@@ -73,11 +73,12 @@ const ChatPage = () => {
   }
   
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4">
+    // Updated container to use full height and flexbox for auto-sizing
+    <div className="h-full flex flex-col items-center justify-center p-2 sm:p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-5xl h-[calc(100vh-100px)] sm:h-[85vh] glass-effect rounded-2xl shadow-2xl overflow-hidden flex border border-border/30"
+        className="w-full max-w-5xl h-full glass-effect rounded-2xl shadow-2xl overflow-hidden flex border border-border/30"
       >
         {/* --- DESKTOP --- */}
         {!isMobileView && (
@@ -91,17 +92,16 @@ const ChatPage = () => {
               />
             </div>
             <div className="flex flex-col w-3/5 lg:w-2/3">
-              {/* --- HEADER is now here, always visible on desktop --- */}
               <div className="p-2 border-b border-border/50 flex items-center justify-center gap-2 bg-muted/20 flex-shrink-0">
                   <img src={newLogoUrl} alt="InkSnap Logo" className="w-6 h-6 rounded-md object-contain" />
                   <h2 className="text-sm font-bold text-muted-foreground tracking-widest">InkSnap Advanced Shitty Chat System (IASCS)</h2>
               </div>
               {selectedConversationId ? (
                 <MessageArea 
-                  key={selectedConversationId} // Add key to force re-mount on conversation change
+                  key={selectedConversationId}
                   conversationId={selectedConversationId} 
                   currentUserId={user?.id} 
-                  onMessageSent={fetchConversations} // Pass the refresh function
+                  onMessageSent={fetchConversations}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
