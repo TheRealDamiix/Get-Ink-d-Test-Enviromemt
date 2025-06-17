@@ -15,10 +15,10 @@ const MessageBubble = ({ msg, currentUserId, onImageClick }) => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+      className={`flex items-end gap-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
     >
       <div 
-        className={`max-w-[70%] px-3 py-2 rounded-xl shadow-md ${
+        className={`max-w-[75%] px-3 py-2 rounded-xl shadow-md ${
           isCurrentUser 
             ? 'bg-primary text-primary-foreground rounded-br-none' 
             : 'bg-muted rounded-bl-none'
@@ -26,17 +26,11 @@ const MessageBubble = ({ msg, currentUserId, onImageClick }) => {
       >
         {msg.content && msg.content !== "[Image]" && <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>}
         {msg.image_url && (
-          <button onClick={() => onImageClick(msg.image_url)} className="mt-2 cursor-pointer">
+          <button onClick={() => onImageClick(msg.image_url)} className="mt-2 cursor-pointer block">
             <img src={msg.image_url} alt="Chat attachment" className="rounded-md max-w-[200px] max-h-[200px] object-cover border border-border/50" />
           </button>
         )}
-        <p 
-          className={`text-xs mt-1.5 ${
-            isCurrentUser 
-              ? 'text-primary-foreground/70 text-right' 
-              : 'text-muted-foreground text-left'
-          }`}
-        >
+        <p className={`text-xs mt-1.5 ${isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'} text-right`}>
           {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
@@ -47,22 +41,21 @@ const MessageBubble = ({ msg, currentUserId, onImageClick }) => {
 const MessageArea = ({ conversationId, currentUserId }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [attachedImageFile, setAttachedImageFile] = useState(null); 
-  const [attachedImagePreview, setAttachedImagePreview] = useState(null); 
+  const [attachedImageFile, setAttachedImageFile] = useState(null);
+  const [attachedImagePreview, setAttachedImagePreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [otherUser, setOtherUser] = useState(null);
-  const messagesEndRef = useRef(null);
-  const imageInputRef = useRef(null); 
-  const { toast } = useToast();
   const [imageToPreview, setImageToPreview] = useState(null);
-
+  const messagesEndRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const { toast } = useToast();
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  const fetchMessagesAndConversationDetails = useCallback(async () => {
+  const fetchMessagesAndDetails = useCallback(async () => {
     if (!conversationId || !currentUserId) return;
     setIsLoading(true);
     try {
@@ -74,21 +67,18 @@ const MessageArea = ({ conversationId, currentUserId }) => {
 
       if (convError) throw convError;
       setOtherUser(convData.user1_id === currentUserId ? convData.user2 : convData.user1);
-      
+
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
+        
       if (messagesError) throw messagesError;
       setMessages(messagesData || []);
       
-      await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('conversation_id', conversationId)
-        .eq('receiver_id', currentUserId)
-        .eq('is_read', false);
+      // Mark messages as read
+      await supabase.from('messages').update({ is_read: true }).eq('conversation_id', conversationId).eq('receiver_id', currentUserId);
 
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -99,50 +89,34 @@ const MessageArea = ({ conversationId, currentUserId }) => {
   }, [conversationId, currentUserId, toast]);
 
   useEffect(() => {
-    fetchMessagesAndConversationDetails();
-  }, [fetchMessagesAndConversationDetails]);
+    fetchMessagesAndDetails();
+  }, [fetchMessagesAndDetails]);
 
-  useEffect(scrollToBottom, [messages, scrollToBottom]);
-
+  useEffect(scrollToBottom, [messages]);
+  
+  // Real-time subscription for new messages
   useEffect(() => {
-    if (!conversationId || !currentUserId) return;
-
-    const channel = supabase
-      .channel(`messages:${conversationId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
-        async (payload) => {
-          setMessages(prevMessages => [...prevMessages, payload.new]);
-          if (payload.new.receiver_id === currentUserId) {
-            await supabase
-              .from('messages')
-              .update({ is_read: true })
-              .eq('id', payload.new.id);
-          }
+    if (!conversationId) return;
+    const channel = supabase.channel(`messages:${conversationId}`);
+    const subscription = channel.on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+      (payload) => {
+        setMessages(prev => [...prev, payload.new]);
+        if (payload.new.receiver_id === currentUserId) {
+            supabase.from('messages').update({ is_read: true }).eq('id', payload.new.id).then();
         }
-      )
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`Subscribed to messages:${conversationId}`);
-        }
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`Subscription error on messages:${conversationId}:`, status, err);
-           toast({ title: "Realtime Chat Error", description: `Chat connection issue: ${status}. File uploads might be affected. Try refreshing.`, variant: "destructive" });
-        }
-      });
-
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [conversationId, currentUserId, toast]);
+      }
+    ).subscribe();
+    
+    return () => supabase.removeChannel(channel);
+  }, [conversationId, currentUserId]);
 
   const handleImageAttachment = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) { 
-        toast({ title: "Image too large", description: "Image must be less than 5MB.", variant: "destructive" });
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({ title: "Image too large", description: "Please select an image smaller than 5MB.", variant: "destructive" });
         return;
       }
       setAttachedImageFile(file);
@@ -153,52 +127,36 @@ const MessageArea = ({ conversationId, currentUserId }) => {
   const removeAttachedImage = () => {
     setAttachedImageFile(null);
     setAttachedImagePreview(null);
-    if (imageInputRef.current) {
-      imageInputRef.current.value = '';
-    }
+    if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
-  const uploadImageToCloudinary = async (file) => {
+  const uploadImage = async (file) => {
     if (!file || !currentUserId) return null;
-    
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'chat_images');
       formData.append('public_id_name', `chat_${currentUserId}_${Date.now()}`);
 
-      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-cloudinary', {
-        body: formData,
-      });
-
-      if (uploadError || uploadData.error || !uploadData.secure_url) {
-        let errorMessage = uploadError?.message || uploadData?.error || 'Failed to upload chat image.';
-        if (errorMessage.toLowerCase().includes('timeout') || errorMessage.toLowerCase().includes('deadline_exceeded') || errorMessage.toLowerCase().includes('function timed out')) {
-          errorMessage = "Image upload timed out. The file might be too large or the connection is unstable. Please try again.";
-        }
-        throw new Error(errorMessage);
-      }
-      return { url: uploadData.secure_url, publicId: uploadData.public_id };
-
+      const { data, error } = await supabase.functions.invoke('upload-to-cloudinary', { body: formData });
+      if (error || data.error) throw new Error(error?.message || data.error);
+      return { url: data.secure_url, publicId: data.public_id };
     } catch (error) {
-      console.error('Error uploading chat image to Cloudinary:', error);
-      toast({ title: "Upload Error", description: error.message, variant: "destructive" });
+      toast({ title: "Upload Error", description: `Failed to upload image. ${error.message}`, variant: "destructive" });
       return null;
     }
   };
 
-
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if ((!newMessage.trim() && !attachedImageFile) || !otherUser) return; 
+    if ((!newMessage.trim() && !attachedImageFile) || !otherUser) return;
     setIsSending(true);
 
-    const tempId = `temp_${Date.now()}`;
     let imageUrl = null;
     let imagePublicId = null;
-    
+
     if (attachedImageFile) {
-      const uploaded = await uploadImageToCloudinary(attachedImageFile);
+      const uploaded = await uploadImage(attachedImageFile);
       if (uploaded) {
         imageUrl = uploaded.url;
         imagePublicId = uploaded.publicId;
@@ -207,150 +165,68 @@ const MessageArea = ({ conversationId, currentUserId }) => {
         return;
       }
     }
-    
-    let messageContent = newMessage.trim();
-    if (!messageContent && imageUrl) {
-      messageContent = "[Image]"; // Default content if only image is sent
-    } else if (!messageContent && !imageUrl) {
-      // This case should be prevented by the initial check, but as a safeguard:
-      setIsSending(false);
-      return;
-    }
 
+    const contentToSend = newMessage.trim() || "[Image]";
 
-    const messageToSend = {
-      id: tempId,
+    const { error } = await supabase.from('messages').insert({
       conversation_id: conversationId,
       sender_id: currentUserId,
       receiver_id: otherUser.id,
-      content: messageContent,
-      image_url: imageUrl, 
-      image_public_id: imagePublicId, 
-      created_at: new Date().toISOString(),
-      is_read: false,
-    };
+      content: contentToSend,
+      image_url: imageUrl,
+      image_public_id: imagePublicId,
+    });
 
-    setMessages(prev => [...prev, messageToSend]);
-    setNewMessage('');
-    removeAttachedImage(); 
-
-    try {
-      const { data: sentMsg, error } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversationId,
-          sender_id: currentUserId,
-          receiver_id: otherUser.id,
-          content: messageToSend.content, // Ensure this is never null if column is NOT NULL
-          image_url: messageToSend.image_url, 
-          image_public_id: messageToSend.image_public_id, 
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-
-      setMessages(prev => prev.map(m => m.id === tempId ? sentMsg : m));
-
-    } catch (error) {
-      console.error("Error sending message:", error);
-      toast({ title: "Error", description: `Could not send message. ${error.message}`, variant: "destructive" });
-      setMessages(prev => prev.filter(m => m.id !== tempId)); 
-    } finally {
-      setIsSending(false);
+    if (error) {
+      toast({ title: "Error", description: "Could not send message.", variant: "destructive" });
+    } else {
+      setNewMessage('');
+      removeAttachedImage();
     }
+    setIsSending(false);
   };
-  
-  if (!conversationId) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
-        <MessageSquare className="w-16 h-16 mb-4 text-primary/70" />
-        <p className="text-lg">Select a conversation to start chatting</p>
-        <p className="text-sm mt-1">Or find an artist and send them a message!</p>
-      </div>
-    );
-  }
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  }
-  
-  if (!otherUser) {
-     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
-        <AlertTriangle className="w-12 h-12 mb-4 text-destructive" />
-        <p className="text-lg">Could not load conversation details.</p>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (!otherUser) return <div className="flex items-center justify-center h-full"><AlertTriangle className="w-8 h-8 text-destructive" /> <p className="ml-2">Could not load conversation.</p></div>;
 
   return (
     <>
-    <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-border/50 flex items-center gap-3">
-        <Avatar className="h-9 w-9">
-          <AvatarImage src={otherUser.profile_photo_url} alt={otherUser.name || otherUser.username} />
-          <AvatarFallback className="ink-gradient text-primary-foreground">
-            {(otherUser.name || otherUser.username || 'U').charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <h3 className="font-semibold">{otherUser.name || otherUser.username}</h3>
+      <div className="flex flex-col h-full bg-background/50">
+        <header className="p-3 border-b border-border/50 flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={otherUser.profile_photo_url} alt={otherUser.name || otherUser.username} />
+            <AvatarFallback>{(otherUser.name || otherUser.username)?.charAt(0)}</AvatarFallback>
+          </Avatar>
+          <h3 className="font-semibold">{otherUser.name || otherUser.username}</h3>
+        </header>
+        <main className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+          {messages.map((msg) => (
+            <MessageBubble key={msg.id} msg={msg} currentUserId={currentUserId} onImageClick={setImageToPreview} />
+          ))}
+          <div ref={messagesEndRef} />
+        </main>
+        <footer className="p-4 border-t border-border/50">
+          {attachedImagePreview && (
+            <div className="mb-2 relative w-20 h-20">
+              <img src={attachedImagePreview} alt="Preview" className="rounded-md object-cover w-full h-full" />
+              <Button type="button" variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background/80 hover:bg-destructive" onClick={removeAttachedImage} disabled={isSending}>
+                <XCircle className="h-4 w-4 text-destructive-foreground" />
+              </Button>
+            </div>
+          )}
+          <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+            <Input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleImageAttachment} disabled={isSending} />
+            <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isSending}><Paperclip className="w-5 h-5" /></Button>
+            <Input type="text" placeholder="Type a message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={isSending} className="flex-1" />
+            <Button type="submit" className="ink-gradient" disabled={isSending || (!newMessage.trim() && !attachedImageFile)}><Send className="w-4 h-4" /></Button>
+          </form>
+        </footer>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} msg={msg} currentUserId={currentUserId} onImageClick={setImageToPreview} />
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-border/50">
-        {attachedImagePreview && (
-          <div className="mb-2 relative w-20 h-20">
-            <img src={attachedImagePreview} alt="Preview" className="rounded-md object-cover w-full h-full" />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-background/70 hover:bg-destructive/90 group"
-              onClick={removeAttachedImage}
-              disabled={isSending}
-            >
-              <XCircle className="h-3 w-3 text-destructive group-hover:text-destructive-foreground" />
-            </Button>
-          </div>
-        )}
-        <div className="flex items-center space-x-2">
-          <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isSending}>
-            <Paperclip className="w-5 h-5 text-foreground" />
-          </Button>
-          <Input 
-            type="file" 
-            ref={imageInputRef}
-            className="hidden"
-            accept="image/png, image/jpeg, image/gif, image/webp"
-            onChange={handleImageAttachment}
-            disabled={isSending}
-          />
-          <Input 
-            type="text" 
-            placeholder="Type your message..." 
-            className="flex-1 bg-background/70 focus-visible:ring-primary" 
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            disabled={isSending}
-          />
-          <Button type="submit" className="ink-gradient" disabled={isSending || (!newMessage.trim() && !attachedImageFile)}>
-            {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </Button>
-        </div>
-      </form>
-    </div>
-    {imageToPreview && (
-      <Dialog open={!!imageToPreview} onOpenChange={() => setImageToPreview(null)}>
-        <DialogContent className="max-w-3xl p-2 glass-effect">
-          <img src={imageToPreview} alt="Chat Image Preview" className="rounded-md max-h-[80vh] w-auto mx-auto" />
-        </DialogContent>
-      </Dialog>
-    )}
+      {imageToPreview && (
+        <Dialog open={!!imageToPreview} onOpenChange={() => setImageToPreview(null)}>
+          <DialogContent className="max-w-3xl p-2 glass-effect"><img src={imageToPreview} alt="Chat Preview" className="rounded-md max-h-[80vh] w-auto mx-auto" /></DialogContent>
+        </Dialog>
+      )}
     </>
   );
 };
