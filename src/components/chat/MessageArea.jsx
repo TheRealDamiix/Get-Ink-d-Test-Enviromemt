@@ -57,6 +57,7 @@ const MessageArea = ({ conversationId, currentUserId }) => {
     const imageInputRef = useRef(null);
     const { toast } = useToast();
     const { fetchUnreadCount } = useAuth();
+    const newLogoUrl = "https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png";
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -71,7 +72,7 @@ const MessageArea = ({ conversationId, currentUserId }) => {
 
             const { data: messagesData } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
             setMessages(messagesData || []);
-            
+
             const { error: updateError } = await supabase.from('messages').update({ is_read: true }).eq('conversation_id', conversationId).eq('receiver_id', currentUserId);
             if (!updateError) fetchUnreadCount(currentUserId);
         } catch (error) {
@@ -86,7 +87,7 @@ const MessageArea = ({ conversationId, currentUserId }) => {
     }, [fetchMessagesAndDetails]);
 
     useEffect(scrollToBottom, [messages]);
-  
+
     useEffect(() => {
         if (!conversationId) return;
         const channel = supabase.channel(`messages:${conversationId}`);
@@ -98,7 +99,7 @@ const MessageArea = ({ conversationId, currentUserId }) => {
                 }
             }
         ).subscribe();
-    
+
         return () => supabase.removeChannel(channel);
     }, [conversationId, currentUserId, fetchUnreadCount]);
 
@@ -113,7 +114,7 @@ const MessageArea = ({ conversationId, currentUserId }) => {
             setAttachedImagePreview(URL.createObjectURL(file));
         }
     };
-    
+
     const removeAttachedImage = () => {
         setAttachedImageFile(null);
         setAttachedImagePreview(null);
@@ -134,7 +135,7 @@ const MessageArea = ({ conversationId, currentUserId }) => {
             return null;
         }
     };
-    
+
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if ((!newMessage.trim() && !attachedImageFile) || !otherUser) return;
@@ -153,12 +154,12 @@ const MessageArea = ({ conversationId, currentUserId }) => {
                 return;
             }
         }
-        
+
         let contentToSend = newMessage.trim();
         if (!contentToSend && imageUrl) {
-            contentToSend = "[Image]";
+            contentToSend = "This is the Image";
         }
-        
+
         if (!contentToSend && !imageUrl) {
             setIsSending(false);
             return;
@@ -188,6 +189,13 @@ const MessageArea = ({ conversationId, currentUserId }) => {
     return (
         <>
             <div className="flex flex-col h-full bg-background/50">
+                {/* --- NEW HEADER --- */}
+                <div className="p-2 border-b border-border/50 flex items-center justify-center gap-2 bg-muted/20">
+                    <img src={newLogoUrl} alt="InkSnap Logo" className="w-6 h-6 rounded-md object-contain" />
+                    <h2 className="text-sm font-bold text-muted-foreground tracking-widest">InkSnap Advanced Shitty Chat System (IASCS)</h2>
+                </div>
+
+                {/* --- Conversation Partner Header --- */}
                 <header className="p-3 border-b border-border/50 flex items-center gap-3">
                     <Avatar className="h-9 w-9">
                         <AvatarImage src={otherUser.profile_photo_url} alt={otherUser.name || otherUser.username} />
@@ -195,6 +203,7 @@ const MessageArea = ({ conversationId, currentUserId }) => {
                     </Avatar>
                     <h3 className="font-semibold">{otherUser.name || otherUser.username}</h3>
                 </header>
+
                 <main className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                     {messages.map((msg) => (
                         <MessageBubble key={msg.id} msg={msg} currentUserId={currentUserId} onImageClick={setImageToPreview} />
@@ -204,27 +213,4 @@ const MessageArea = ({ conversationId, currentUserId }) => {
                 <footer className="p-4 border-t border-border/50">
                     {attachedImagePreview && (
                         <div className="mb-2 relative w-20 h-20">
-                            <img src={attachedImagePreview} alt="Preview" className="rounded-md object-cover w-full h-full" />
-                            <Button type="button" variant="ghost" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background/80 hover:bg-destructive" onClick={removeAttachedImage} disabled={isSending}>
-                                <XCircle className="h-4 w-4 text-destructive-foreground" />
-                            </Button>
-                        </div>
-                    )}
-                    <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                        <Input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleImageAttachment} disabled={isSending} />
-                        <Button type="button" variant="ghost" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isSending}><Paperclip className="w-5 h-5" /></Button>
-                        <Input type="text" placeholder="Type a message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={isSending} className="flex-1" />
-                        <Button type="submit" className="ink-gradient" disabled={isSending || (!newMessage.trim() && !attachedImageFile)}><Send className="w-4 h-4" /></Button>
-                    </form>
-                </footer>
-            </div>
-            {imageToPreview && (
-                <Dialog open={!!imageToPreview} onOpenChange={() => setImageToPreview(null)}>
-                <DialogContent className="max-w-3xl p-2 glass-effect"><img src={imageToPreview} alt="Chat Preview" className="rounded-md max-h-[80vh] w-auto mx-auto" /></DialogContent>
-                </Dialog>
-            )}
-        </>
-    );
-};
-
-export default MessageArea;
+                            <img src={attachedImagePreview} alt
