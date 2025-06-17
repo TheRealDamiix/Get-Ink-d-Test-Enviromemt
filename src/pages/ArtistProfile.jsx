@@ -365,7 +365,7 @@ const ArtistProfile = () => {
       />
 
       <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
-        <DialogContent className="glass-effect">
+        <DialogContent className="glass-effect max-h-[90vh] overflow-y-auto custom-scrollbar">
           <DialogHeader>
             <DialogTitle>
               {bookingContext.conventionDateId ? `Book at ${artist.name}'s Convention Spot` : `Request Booking with ${artist.name || artist.username}`}
