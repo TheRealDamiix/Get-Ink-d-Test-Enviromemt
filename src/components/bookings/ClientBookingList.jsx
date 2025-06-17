@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -138,7 +137,7 @@ const ClientBookingList = () => {
             <div className="mt-3 pt-3 border-t border-border/30">
               <p className="text-sm font-medium mb-1">Reference Image:</p>
               <button onClick={() => setImageToPreview(booking.reference_image_url)} className="cursor-pointer">
-                <img-replace src={booking.reference_image_url} alt="Booking reference" className="rounded-md max-w-[150px] max-h-[150px] object-cover border border-border" />
+                <img src={booking.reference_image_url} alt="Booking reference" className="rounded-md max-w-[150px] max-h-[150px] object-cover border border-border" />
               </button>
             </div>
           )}
@@ -165,7 +164,7 @@ const ClientBookingList = () => {
     {imageToPreview && (
       <ImagePreviewDialog open={!!imageToPreview} onOpenChange={() => setImageToPreview(null)}>
         <ImagePreviewDialogContent className="max-w-3xl p-2 glass-effect max-h-[90vh] overflow-y-auto">
-          <img-replace src={imageToPreview} alt="Booking Reference Preview" className="rounded-md max-h-[80vh] w-auto mx-auto" />
+          <img src={imageToPreview} alt="Booking Reference Preview" className="rounded-md max-h-[80vh] w-auto mx-auto" />
         </ImagePreviewDialogContent>
       </ImagePreviewDialog>
     )}
