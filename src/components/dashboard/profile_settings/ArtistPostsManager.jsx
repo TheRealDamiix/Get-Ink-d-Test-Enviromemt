@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -219,7 +218,7 @@ const UserPostsManager = ({ user, onPostCreatedOrUpdated }) => {
             >
               <div className="flex-1">
                 {post.image_url && (
-                  <img-replace src={post.image_url} alt="Post image" className="w-full max-w-xs h-auto rounded-md mb-2 object-cover" />
+                  <img src={post.image_url} alt="Post image" className="w-full max-w-xs h-auto rounded-md mb-2 object-cover" />
                 )}
                 {post.title && <h4 className="font-semibold text-md mb-1">{post.title}</h4>}
                 {post.content && <p className="text-sm whitespace-pre-wrap">{post.content}</p>}
@@ -272,7 +271,7 @@ const UserPostsManager = ({ user, onPostCreatedOrUpdated }) => {
               </div>
               {currentPost.existing_image_url && (
                 <div className="mt-2 relative w-40 h-40">
-                  <img-replace src={currentPost.existing_image_url} alt="Preview" className="w-full h-full object-cover rounded-md" />
+                  <img src={currentPost.existing_image_url} alt="Preview" className="w-full h-full object-cover rounded-md" />
                   <Button 
                     variant="destructive" 
                     size="icon" 
