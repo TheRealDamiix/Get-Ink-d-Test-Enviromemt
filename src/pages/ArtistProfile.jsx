@@ -8,7 +8,7 @@ import PortfolioGrid from '@/components/profile/PortfolioGrid';
 import ReviewsSection from '@/components/profile/ReviewsSection';
 import ConventionDatesSection from '@/components/profile/ConventionDatesSection';
 import ArtistPostsDisplay from '@/components/profile/ArtistPostsDisplay';
-import ArtistDealsDisplay from '@/components/profile/ArtistDealsDisplay'; // Added import
+import ArtistDealsDisplay from '@/components/profile/ArtistDealsDisplay';
 import ImageDialog from '@/components/profile/ImageDialog';
 import BookingRequestForm from '@/components/bookings/BookingRequestForm';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ const ArtistProfile = () => {
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [bookingContext, setBookingContext] = useState({ conventionDateId: null, generalBooking: false });
   const portfolioRef = useRef(null);
+  const newLogoUrl = "https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png";
 
 
   const fetchArtistData = useCallback(async () => {
@@ -365,27 +366,33 @@ const ArtistProfile = () => {
       />
 
       <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
-        <DialogContent className="glass-effect max-h-[90vh] overflow-y-auto custom-scrollbar">
-          <DialogHeader>
-            <DialogTitle>
-              {bookingContext.conventionDateId ? `Book at ${artist.name}'s Convention Spot` : `Request Booking with ${artist.name || artist.username}`}
-            </DialogTitle>
-            <DialogDescription>
-              {bookingContext.conventionDateId ? 
-                `Fill out the form to request a booking during this convention.` :
-                `Please provide your preferred date and details for the booking.`
-              }
-            </DialogDescription>
-          </DialogHeader>
-          <BookingRequestForm 
-            artistId={artist.id} 
-            artistName={artist.name || artist.username}
-            conventionDateId={bookingContext.conventionDateId}
-            onSubmitSuccess={() => {
-              setShowBookingDialog(false);
-              toast({ title: "Booking Request Sent!", description: "The artist will review your request soon."});
-            }}
-          />
+        <DialogContent className="glass-effect p-0 relative flex flex-col max-h-[90vh]">
+            <div 
+                style={{ backgroundImage: `url(${newLogoUrl})` }} 
+                className="absolute inset-0 bg-center bg-contain bg-no-repeat opacity-5 z-0"
+            />
+            <div className="relative z-10 p-6 space-y-4 overflow-y-auto custom-scrollbar">
+                <DialogHeader>
+                    <DialogTitle>
+                    {bookingContext.conventionDateId ? `Book at ${artist.name}'s Convention Spot` : `Request Booking with ${artist.name || artist.username}`}
+                    </DialogTitle>
+                    <DialogDescription>
+                    {bookingContext.conventionDateId ? 
+                        `Fill out the form to request a booking during this convention.` :
+                        `Please provide your preferred date and details for the booking.`
+                    }
+                    </DialogDescription>
+                </DialogHeader>
+                <BookingRequestForm 
+                    artistId={artist.id} 
+                    artistName={artist.name || artist.username}
+                    conventionDateId={bookingContext.conventionDateId}
+                    onSubmitSuccess={() => {
+                        setShowBookingDialog(false);
+                        toast({ title: "Booking Request Sent!", description: "The artist will review your request soon."});
+                    }}
+                />
+            </div>
         </DialogContent>
       </Dialog>
     </div>
