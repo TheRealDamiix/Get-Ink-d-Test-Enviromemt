@@ -56,7 +56,7 @@ const ProfileForm = ({
             <Label>Location/Shop Thumbnail (Optional)</Label>
             <div className="w-32 h-32 border-2 border-dashed border-muted-foreground rounded-lg flex items-center justify-center bg-background/50 overflow-hidden">
               {locationThumbnailUrl ? (
-                <img-replace src={locationThumbnailUrl} alt="Location thumbnail" className="w-full h-full object-cover" />
+                <img src={locationThumbnailUrl} alt="Location thumbnail" className="w-full h-full object-cover" />
               ) : (
                 <ImageIcon className="w-12 h-12 text-muted-foreground" />
               )}
