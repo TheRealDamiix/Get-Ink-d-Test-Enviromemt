@@ -11,32 +11,25 @@ import ConversationList from '@/components/chat/ConversationList';
 import MessageArea from '@/components/chat/MessageArea';
 
 const ChatPage = () => {
-  const { user, loading: authLoading, fetchUnreadCount } = useAuth();
+  const { user, loading: authLoading, fetchUnreadCount, decrementUnreadCount } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-
   const [conversations, setConversations] = useState([]);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+  const newLogoUrl = "https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png";
 
-  // **This function now correctly processes the data**
+
   const fetchConversations = useCallback(async () => {
     if (!user?.id) return;
     setIsLoadingConversations(true);
     try {
       const { data, error } = await supabase.rpc('get_conversations_with_details', { p_user_id: user.id });
       if (error) throw error;
-      
-      // Process the raw data to create an easy-to-use 'otherUser' property
-      const conversationsWithProfiles = (data || []).map(conv => ({
-          ...conv,
-          otherUser: conv.other_user_profile
-      }));
-
+      const conversationsWithProfiles = (data || []).map(conv => ({ ...conv, otherUser: conv.other_user_profile }));
       setConversations(conversationsWithProfiles);
-
     } catch (error) {
       toast({ title: "Error", description: "Could not load conversations.", variant: "destructive" });
     } finally {
@@ -49,15 +42,11 @@ const ChatPage = () => {
       fetchConversations();
     }
   }, [user, authLoading, fetchConversations]);
-  
+
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const conversationIdFromUrl = searchParams.get('conversationId');
-    if (conversationIdFromUrl) {
-      setSelectedConversationId(conversationIdFromUrl);
-    } else {
-      setSelectedConversationId(null);
-    }
+    setSelectedConversationId(conversationIdFromUrl || null);
   }, [location.search]);
   
   useEffect(() => {
@@ -67,14 +56,17 @@ const ChatPage = () => {
   }, []);
 
   const handleSelectConversation = async (conversationId) => {
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (conversation && conversation.unread_count > 0) {
+        decrementUnreadCount(conversation.unread_count);
+        setConversations(prev => prev.map(c => c.id === conversationId ? { ...c, unread_count: 0 } : c));
+    }
     navigate(`/chat?conversationId=${conversationId}`, { replace: true });
-    await supabase.from('messages').update({ is_read: true }).eq('conversation_id', conversationId).eq('receiver_id', user.id);
-    if (user) fetchUnreadCount(user.id);
   };
 
   const handleCloseMobileDialog = () => {
     navigate('/chat', { replace: true });
-  }
+  };
 
   if (authLoading || (!user && !authLoading)) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 text-primary animate-spin" /></div>;
@@ -99,8 +91,18 @@ const ChatPage = () => {
               />
             </div>
             <div className="flex flex-col w-3/5 lg:w-2/3">
+              {/* --- HEADER is now here, always visible on desktop --- */}
+              <div className="p-2 border-b border-border/50 flex items-center justify-center gap-2 bg-muted/20 flex-shrink-0">
+                  <img src={newLogoUrl} alt="InkSnap Logo" className="w-6 h-6 rounded-md object-contain" />
+                  <h2 className="text-sm font-bold text-muted-foreground tracking-widest">InkSnap Advanced Shitty Chat System (IASCS)</h2>
+              </div>
               {selectedConversationId ? (
-                <MessageArea conversationId={selectedConversationId} currentUserId={user?.id} />
+                <MessageArea 
+                  key={selectedConversationId} // Add key to force re-mount on conversation change
+                  conversationId={selectedConversationId} 
+                  currentUserId={user?.id} 
+                  onMessageSent={fetchConversations} // Pass the refresh function
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
                    <MessageSquare className="w-16 h-16 mb-4 text-primary/70" />
@@ -126,7 +128,12 @@ const ChatPage = () => {
       
       <Dialog open={isMobileView && !!selectedConversationId} onOpenChange={(open) => { if(!open) handleCloseMobileDialog() }}>
         <DialogContent className="p-0 m-0 h-screen max-h-screen w-screen max-w-full rounded-none border-none glass-effect flex flex-col">
-            <MessageArea conversationId={selectedConversationId} currentUserId={user.id} />
+            <MessageArea 
+              key={selectedConversationId}
+              conversationId={selectedConversationId} 
+              currentUserId={user?.id}
+              onMessageSent={fetchConversations}
+            />
         </DialogContent>
       </Dialog>
     </div>
