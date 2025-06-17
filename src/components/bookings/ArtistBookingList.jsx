@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -152,50 +151,4 @@ const ArtistBookingList = () => {
               </div>
             )}
           </div>
-          {booking.service_description && <p className="text-sm mt-3 pt-3 border-t border-border/30">Service: {booking.service_description}</p>}
-          {booking.notes && <p className="text-sm mt-2 text-muted-foreground">Notes: {booking.notes}</p>}
-          {booking.convention_date_id && <p className="text-xs mt-2 text-blue-400">This booking is related to a convention/event.</p>}
-          {booking.reference_image_url && (
-            <div className="mt-3 pt-3 border-t border-border/30">
-              <p className="text-sm font-medium mb-1">Reference Image:</p>
-              <button onClick={() => setImageToPreview(booking.reference_image_url)} className="cursor-pointer">
-                <img-replace src={booking.reference_image_url} alt="Booking reference" className="rounded-md max-w-[150px] max-h-[150px] object-cover border border-border" />
-              </button>
-            </div>
-          )}
-        </div>
-      ))}
-
-      <Dialog open={!!selectedBooking} onOpenChange={() => setSelectedBooking(null)}>
-        <DialogContent className="glass-effect max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{actionType === 'confirm' ? 'Confirm Booking' : 'Decline Booking'}</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to {actionType} this booking request from {selectedBooking?.client?.name || 'this client'} for {formatDate(selectedBooking?.requested_datetime)}?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild><Button variant="outline" disabled={isProcessingAction}>Back</Button></DialogClose>
-            <Button 
-              onClick={handleAction} 
-              className={actionType === 'confirm' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}
-              disabled={isProcessingAction}
-            >
-              {isProcessingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Yes, ${actionType}`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-    {imageToPreview && (
-      <ImagePreviewDialog open={!!imageToPreview} onOpenChange={() => setImageToPreview(null)}>
-        <ImagePreviewDialogContent className="max-w-3xl p-2 glass-effect max-h-[90vh] overflow-y-auto">
-          <img-replace src={imageToPreview} alt="Booking Reference Preview" className="rounded-md max-h-[80vh] w-auto mx-auto" />
-        </ImagePreviewDialogContent>
-      </ImagePreviewDialog>
-    )}
-    </>
-  );
-};
-
-export default ArtistBookingList;
+          {booking.service_description && <p className="
