@@ -2,13 +2,20 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, User, Settings as SettingsIcon, Loader2, MessageCircle, LayoutDashboard, Newspaper } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, Newspaper, MessageCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Badge } from '@/components/ui/badge'; // Import Badge
 
 const Navbar = () => {
-  const { user, logout, loading, profileLoading } = useAuth();
+  const { user, logout, loading, profileLoading, unreadCount } = useAuth(); // Get unreadCount
   const navigate = useNavigate();
   const newLogoUrl = "https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png";
 
@@ -45,7 +52,6 @@ const Navbar = () => {
           </Link>
 
           <div className="flex items-center space-x-4">
-            {/* Feed button removed from here, will be in dropdown */}
             {isUserLoading ? (
                <Loader2 className="w-6 h-6 text-primary animate-spin" />
             ) : user ? (
@@ -58,65 +64,42 @@ const Navbar = () => {
                         {getInitials(displayName)}
                       </AvatarFallback>
                     </Avatar>
+                    {unreadCount > 0 && (
+                        <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">{unreadCount}</Badge>
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56 glass-effect" align="end">
                   <DropdownMenuItem asChild>
                     <Link to={isArtist ? "/artist-dashboard" : "/client-dashboard"} className="flex items-center">
                       <LayoutDashboard className="mr-2 h-4 w-4" />
-                      Dashboard
+                      <span>Dashboard</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/feed" className="flex items-center">
-                      <Newspaper className="mr-2 h-4 w-4" /> Feed
+                      <Newspaper className="mr-2 h-4 w-4" /> <span>Feed</span>
                     </Link>
                   </DropdownMenuItem>
-                  {isArtist && username && (
-                    <DropdownMenuItem asChild>
-                      <Link to={`/artist/${username}`} className="flex items-center">
-                        <User className="mr-2 h-4 w-4" />
-                        View Profile
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                   {!isArtist && username && (
-                    <DropdownMenuItem asChild>
-                      <Link to={`/user/${username}`} className="flex items-center">
-                        <User className="mr-2 h-4 w-4" />
-                        View Profile
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuItem asChild>
-                    <Link to="/chat" className="flex items-center">
-                      <MessageCircle className="mr-2 h-4 w-4" />
-                      Messages
+                    <Link to="/chat" className="flex items-center justify-between w-full">
+                      <div className="flex items-center">
+                        <MessageCircle className="mr-2 h-4 w-4" /> <span>Messages</span>
+                      </div>
+                      {unreadCount > 0 && <Badge variant="destructive" className="h-auto">{unreadCount}</Badge>}
                     </Link>
                   </DropdownMenuItem>
-                  {/* <DropdownMenuItem asChild>
-                    <Link to="/settings" className="flex items-center">
-                      <SettingsIcon className="mr-2 h-4 w-4" />
-                      Settings
-                    </Link>
-                  </DropdownMenuItem> */} {/* Settings link hidden */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="flex items-center text-destructive focus:text-destructive focus:bg-destructive/10">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Logout
+                    <span>Logout</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <>
-                <Button variant="ghost" asChild size="sm">
-                  <Link to="/feed" className="flex items-center">
-                    <Newspaper className="mr-1 h-4 w-4" /> Feed
-                  </Link>
-                </Button>
-                <Button asChild className="ink-gradient hover:opacity-90">
-                  <Link to="/auth">Sign In</Link>
-                </Button>
+                <Button variant="ghost" asChild size="sm"><Link to="/feed">Feed</Link></Button>
+                <Button asChild className="ink-gradient hover:opacity-90"><Link to="/auth">Sign In</Link></Button>
               </>
             )}
           </div>
