@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import apiFetch from '@/lib/api'; 
 
 const AuthContext = createContext();
 
@@ -16,8 +15,26 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0); // <-- New state for notifications
+
+  // Function to fetch the total unread message count
+  const fetchUnreadCount = useCallback(async (userId) => {
+    if (!userId) {
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      const { data, error } = await supabase.rpc('get_total_unread_messages', { p_user_id: userId });
+      if (error) throw error;
+      setUnreadCount(data);
+    } catch (error) {
+      console.error('Error fetching unread messages count:', error);
+      setUnreadCount(0);
+    }
+  }, []);
 
   const fetchFullUserProfile = useCallback(async (sessionUser) => {
+    // ... (existing code in this function remains the same)
     if (!sessionUser) {
       setProfileLoading(false);
       return null;
@@ -115,71 +132,63 @@ export const AuthProvider = ({ children }) => {
         return { ...sessionUser, is_artist: false, profile: null }; 
     }
   }, []);
-  
-  const fetchUserProfile = useCallback(async (userId) => {
-    if (!userId) return;
-    setProfileLoading(true);
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    
-    setProfileLoading(false);
-    if (profileError && profileError.code !== 'PGRST116') {
-      console.error('Error refetching profile:', profileError);
-    } else if (profile) {
-      setUser(currentUser => {
-        if (!currentUser) return null;
-        
-        let determinedIsArtist = currentUser.is_artist;
-        const rawMeta = currentUser.user_metadata || currentUser.raw_user_meta_data || {};
 
-        if (typeof profile.is_artist === 'boolean') {
-            determinedIsArtist = profile.is_artist;
-        } else if (typeof rawMeta.is_artist === 'boolean') {
-            determinedIsArtist = rawMeta.is_artist;
-        }
-
-        const updatedUser = {
-          ...currentUser, 
-          ...profile,    
-          is_artist: determinedIsArtist,
-          profile: {
-            ...profile,
-            is_artist: determinedIsArtist
-          }
-        };
-        return updatedUser;
-      });
-    }
-  }, []);
-
+  // Main useEffect to handle auth state and real-time subscriptions
   useEffect(() => {
-    const initializeAuth = async () => {
-      setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      const fullUser = await fetchFullUserProfile(session?.user);
-      setUser(fullUser);
-      setLoading(false);
-    };
-
-    initializeAuth();
+    setLoading(true);
+    const { data: { session } } = supabase.auth.getSession().then(res => {
+        fetchFullUserProfile(res.data.session?.user).then(fullUser => {
+            setUser(fullUser);
+            if (fullUser) {
+                fetchUnreadCount(fullUser.id);
+            }
+            setLoading(false);
+        });
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        setLoading(true);
         const fullUser = await fetchFullUserProfile(session?.user);
         setUser(fullUser);
-        setLoading(false);
+        if (fullUser) {
+            fetchUnreadCount(fullUser.id);
+        } else {
+            setUnreadCount(0);
+        }
       }
     );
+    
+    // Real-time subscription for unread messages count
+    let messagesSubscription;
+    if (user?.id) {
+        messagesSubscription = supabase
+            .channel(`public:messages:for_user_${user.id}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
+                () => fetchUnreadCount(user.id)
+            )
+            .subscribe();
+    }
 
     return () => {
       subscription?.unsubscribe();
+      if (messagesSubscription) {
+        supabase.removeChannel(messagesSubscription);
+      }
     };
-  }, [fetchFullUserProfile]);
+  }, [user?.id, fetchFullUserProfile, fetchUnreadCount]);
 
+  const logout = async () => {
+    setLoading(true);
+    await supabase.auth.signOut();
+    setUser(null);
+    setUnreadCount(0);
+    setLoading(false);
+    setProfileLoading(false);
+  };
+  
+  // ... (keep the rest of the functions like login, signup, updateUser, deleteAccount)
   const login = async (email, password, rememberMe = false) => {
     setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -219,14 +228,6 @@ export const AuthProvider = ({ children }) => {
     }
     setLoading(false);
     return { data: {user: fetchedUser}, error };
-  };
-
-  const logout = async () => {
-    setLoading(true);
-    await supabase.auth.signOut();
-    setUser(null); 
-    setLoading(false);
-    setProfileLoading(false); 
   };
 
   const updateUserContextProfile = (updatedProfileData) => {
@@ -297,14 +298,15 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
-    loading, 
-    profileLoading, 
+    loading,
+    profileLoading,
+    unreadCount, // <-- Expose count
+    fetchUnreadCount, // <-- Expose refetch function
     login,
     signup,
     logout,
-    updateUser: updateUserDatabase, 
-    fetchUserProfile, 
-    deleteAccount
+    updateUser: updateUserDatabase,
+    deleteAccount,
   };
 
   return (
