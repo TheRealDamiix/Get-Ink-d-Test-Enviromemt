@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -203,7 +202,7 @@ const PortfolioManager = () => {
           {portfolioImages.map((item, idx) => (
             <motion.div key={item.id || idx} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.1 }} className="group relative">
               <div className="aspect-square rounded-lg overflow-hidden mb-2">
-                <img-replace src={item.cloudinary_url} alt={item.caption || 'Portfolio image'} className="w-full h-full object-cover" />
+                <img src={item.cloudinary_url} alt={item.caption || 'Portfolio image'} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <Button size="sm" variant="destructive" onClick={() => handleRemoveImage(item)}><Trash2 className="w-4 h-4" /></Button>
                 </div>
