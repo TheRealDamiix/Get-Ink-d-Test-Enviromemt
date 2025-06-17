@@ -4,9 +4,10 @@ import { MessageSquare, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
-const ConversationListItem = ({ conv, onSelectConversation, selectedConversationId, currentUserId }) => {
-  const otherUser = conv.user1_id === currentUserId ? conv.user2 : conv.user1;
-  if (!otherUser) return null;
+const ConversationListItem = ({ conv, onSelectConversation, selectedConversationId }) => {
+  // Use the pre-processed 'otherUser' object for simplicity and reliability
+  const otherUser = conv.otherUser;
+  if (!otherUser) return null; // Failsafe if other user's data is missing
 
   const lastMessageContent = conv.last_message_content || 'No messages yet...';
   const lastMessageTime = conv.last_message_at ? new Date(conv.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
@@ -45,7 +46,7 @@ const ConversationListItem = ({ conv, onSelectConversation, selectedConversation
   );
 };
 
-const ConversationList = ({ conversations, onSelectConversation, selectedConversationId, currentUserId, isLoading }) => {
+const ConversationList = ({ conversations, onSelectConversation, selectedConversationId, isLoading }) => {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -72,7 +73,6 @@ const ConversationList = ({ conversations, onSelectConversation, selectedConvers
           conv={conv}
           onSelectConversation={onSelectConversation}
           selectedConversationId={selectedConversationId}
-          currentUserId={currentUserId}
         />
       ))}
     </div>
