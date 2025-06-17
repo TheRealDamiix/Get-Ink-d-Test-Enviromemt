@@ -20,7 +20,6 @@ const ChatPage = () => {
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
 
-  // Fetches all conversations for the current user with details about the other participant.
   const fetchConversations = useCallback(async () => {
     if (!user?.id) return;
     setIsLoadingConversations(true);
@@ -39,7 +38,6 @@ const ChatPage = () => {
     }
   }, [user, toast]);
 
-  // Initial load and handling of auth state changes.
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
@@ -50,31 +48,28 @@ const ChatPage = () => {
     }
   }, [user, authLoading, navigate, fetchConversations]);
 
-  // Handle browser resizing for mobile view.
   useEffect(() => {
     const handleResize = () => setIsMobileView(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Set the selected conversation based on the URL parameter.
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const conversationIdFromUrl = searchParams.get('conversationId');
     setSelectedConversationId(conversationIdFromUrl);
   }, [location.search]);
 
-  // Subscribe to real-time database changes for conversations and messages.
+  // Updated real-time subscription with better status handling
   useEffect(() => {
     if (!user?.id) return;
 
     const channel = supabase.channel(`public:chat:${user.id}`);
     
-    const subscription = channel.on(
+    channel.on(
       'postgres_changes',
       { event: '*', schema: 'public' },
       (payload) => {
-        // Refetch conversations if a relevant message or conversation is new/updated
         const relevantConversation = payload.table === 'conversations' && (payload.new?.user1_id === user.id || payload.new?.user2_id === user.id);
         const relevantMessage = payload.table === 'messages' && (payload.new?.receiver_id === user.id || payload.new?.sender_id === user.id);
 
@@ -83,12 +78,21 @@ const ChatPage = () => {
         }
       }
     ).subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`Subscribed to user's chat channel.`);
-        }
-        if (err) {
-            console.error('Real-time subscription error:', err);
-            toast({ title: "Real-time Error", description: `Chat connection issue: ${err.message}.`, variant: "destructive" });
+        switch (status) {
+          case 'SUBSCRIBED':
+            console.log(`ChatPage: Subscribed successfully to user's chat channel.`);
+            fetchConversations(); // Fetch latest data on successful connection/reconnection
+            break;
+          case 'TIMED_OUT':
+            toast({ title: "Chat Connection Timed Out", description: "Reconnecting...", variant: "default" });
+            break;
+          case 'CHANNEL_ERROR':
+            console.error('ChatPage Subscription Error:', err);
+            toast({ title: "Chat Connection Error", description: "A connection error occurred. Please refresh.", variant: "destructive" });
+            break;
+          case 'CLOSED':
+            console.log(`ChatPage: Channel explicitly closed.`);
+            break;
         }
     });
 
@@ -97,12 +101,10 @@ const ChatPage = () => {
     };
   }, [user, fetchConversations, toast]);
 
-  // Handles selecting a conversation from the list.
   const handleSelectConversation = async (conversationId) => {
     setSelectedConversationId(conversationId);
     navigate(`/chat?conversationId=${conversationId}`, { replace: true });
     
-    // Mark messages as read optimistically on the client
     setConversations(prev => prev.map(c => c.id === conversationId ? {...c, unread_count: 0} : c));
     
     await supabase
@@ -161,9 +163,6 @@ const ChatPage = () => {
       </motion.div>
     </div>
   );
-};
-
-export default ChatPage;
 };
 
 export default ChatPage;
