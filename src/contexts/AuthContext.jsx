@@ -15,9 +15,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0); // <-- New state for notifications
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Function to fetch the total unread message count
   const fetchUnreadCount = useCallback(async (userId) => {
     if (!userId) {
       setUnreadCount(0);
@@ -29,12 +28,66 @@ export const AuthProvider = ({ children }) => {
       setUnreadCount(data);
     } catch (error) {
       console.error('Error fetching unread messages count:', error);
-      setUnreadCount(0);
     }
   }, []);
+  
+  // This useEffect handles auth state changes and sets up the real-time listener for notifications
+  useEffect(() => {
+    setLoading(true);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      fetchFullUserProfile(session?.user).then(fullUser => {
+        setUser(fullUser);
+        if (fullUser) fetchUnreadCount(fullUser.id);
+        setLoading(false);
+      });
+    });
 
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const fullUser = await fetchFullUserProfile(session?.user);
+        setUser(fullUser);
+        if (fullUser) {
+          fetchUnreadCount(fullUser.id);
+        } else {
+          setUnreadCount(0);
+        }
+      }
+    );
+
+    return () => subscription?.unsubscribe();
+  }, [fetchUnreadCount]);
+
+  // This useEffect manages the real-time subscription for messages
+  useEffect(() => {
+    let messagesSubscription;
+    if (user?.id) {
+      messagesSubscription = supabase
+        .channel(`public:messages:for_user_${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'messages' },
+          (payload) => {
+            // Refetch count if a message is inserted for the user, or if a message they received was updated (e.g., marked as read elsewhere)
+            if (
+              (payload.eventType === 'INSERT' && payload.new.receiver_id === user.id) ||
+              (payload.eventType === 'UPDATE' && payload.old.receiver_id === user.id)
+            ) {
+              fetchUnreadCount(user.id);
+            }
+          }
+        )
+        .subscribe();
+    }
+    return () => {
+      if (messagesSubscription) {
+        supabase.removeChannel(messagesSubscription);
+      }
+    };
+  }, [user?.id, fetchUnreadCount]);
+
+
+  // The rest of the functions (login, logout, fetchFullUserProfile, etc.) remain unchanged...
   const fetchFullUserProfile = useCallback(async (sessionUser) => {
-    // ... (existing code in this function remains the same)
     if (!sessionUser) {
       setProfileLoading(false);
       return null;
@@ -133,62 +186,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Main useEffect to handle auth state and real-time subscriptions
-  useEffect(() => {
-    setLoading(true);
-    const { data: { session } } = supabase.auth.getSession().then(res => {
-        fetchFullUserProfile(res.data.session?.user).then(fullUser => {
-            setUser(fullUser);
-            if (fullUser) {
-                fetchUnreadCount(fullUser.id);
-            }
-            setLoading(false);
-        });
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const fullUser = await fetchFullUserProfile(session?.user);
-        setUser(fullUser);
-        if (fullUser) {
-            fetchUnreadCount(fullUser.id);
-        } else {
-            setUnreadCount(0);
-        }
-      }
-    );
-    
-    // Real-time subscription for unread messages count
-    let messagesSubscription;
-    if (user?.id) {
-        messagesSubscription = supabase
-            .channel(`public:messages:for_user_${user.id}`)
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
-                () => fetchUnreadCount(user.id)
-            )
-            .subscribe();
-    }
-
-    return () => {
-      subscription?.unsubscribe();
-      if (messagesSubscription) {
-        supabase.removeChannel(messagesSubscription);
-      }
-    };
-  }, [user?.id, fetchFullUserProfile, fetchUnreadCount]);
-
-  const logout = async () => {
-    setLoading(true);
-    await supabase.auth.signOut();
-    setUser(null);
-    setUnreadCount(0);
-    setLoading(false);
-    setProfileLoading(false);
-  };
-  
-  // ... (keep the rest of the functions like login, signup, updateUser, deleteAccount)
   const login = async (email, password, rememberMe = false) => {
     setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -213,21 +210,24 @@ export const AuthProvider = ({ children }) => {
   
     let fetchedUser = null;
     if (!error && data.user) {
-      // The on_auth_user_created trigger handles profile creation.
-      // We need to ensure fetchFullUserProfile can get the profile.
-      // It might take a moment for the trigger to complete.
-      // Instead of setTimeout, we can retry fetching the profile or wait for a signal.
-      // For now, fetchFullUserProfile is designed to handle cases where profile might be initially missing.
       fetchedUser = await fetchFullUserProfile(data.user);
-      // If profile is still null after initial fetch, try one more time after a short delay
       if (fetchedUser && !fetchedUser.profile) {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Shorter delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
         fetchedUser = await fetchFullUserProfile(data.user);
       }
       setUser(fetchedUser);
     }
     setLoading(false);
     return { data: {user: fetchedUser}, error };
+  };
+
+  const logout = async () => {
+    setLoading(true);
+    await supabase.auth.signOut();
+    setUser(null);
+    setUnreadCount(0);
+    setLoading(false);
+    setProfileLoading(false);
   };
 
   const updateUserContextProfile = (updatedProfileData) => {
@@ -283,30 +283,24 @@ export const AuthProvider = ({ children }) => {
 
   const deleteAccount = async () => {
     if (!user) throw new Error("User not authenticated.");
-    
-    // The 'delete-user-account' function is invoked without passing userId in body
-    // as it extracts userId from the JWT token inside the function.
     const { data, error } = await supabase.functions.invoke('delete-user-account');
-
-    if (error) {
-      throw error;
-    }
-    
+    if (error) throw error;
     await logout(); 
     return data;
   };
+
 
   const value = {
     user,
     loading,
     profileLoading,
-    unreadCount, // <-- Expose count
-    fetchUnreadCount, // <-- Expose refetch function
+    unreadCount,
+    fetchUnreadCount,
     login,
     signup,
     logout,
     updateUser: updateUserDatabase,
-    deleteAccount,
+    deleteAccount
   };
 
   return (
