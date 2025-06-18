@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -7,13 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, PlusCircle, Trash2, Edit, CalendarDays, BookOpen, BookLock } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Edit, CalendarDays, BookOpen, BookLock, Clock } from 'lucide-react';
 
 const ConventionDatesManager = ({ user }) => {
   const [conventionDates, setConventionDates] = useState([]);
   const [showConventionDialog, setShowConventionDialog] = useState(false);
   const [currentConvention, setCurrentConvention] = useState({ 
     id: null, event_name: '', location: '', start_date: '', end_date: '', 
+    start_time: '10:00', end_time: '20:00',
     accepting_bookings: true, is_fully_booked: false 
   });
   const [isEditingConvention, setIsEditingConvention] = useState(false);
@@ -57,6 +57,8 @@ const ConventionDatesManager = ({ user }) => {
         location: convention.location,
         start_date: convention.start_date,
         end_date: convention.end_date || '',
+        start_time: convention.start_time || '10:00',
+        end_time: convention.end_time || '20:00',
         accepting_bookings: convention.accepting_bookings === null ? true : convention.accepting_bookings,
         is_fully_booked: convention.is_fully_booked || false,
       });
@@ -64,6 +66,7 @@ const ConventionDatesManager = ({ user }) => {
     } else {
       setCurrentConvention({ 
         id: null, event_name: '', location: '', start_date: '', end_date: '',
+        start_time: '10:00', end_time: '20:00',
         accepting_bookings: true, is_fully_booked: false 
       });
       setIsEditingConvention(false);
@@ -83,6 +86,8 @@ const ConventionDatesManager = ({ user }) => {
       location: currentConvention.location.trim(),
       start_date: currentConvention.start_date,
       end_date: currentConvention.end_date || null,
+      start_time: currentConvention.start_time || null,
+      end_time: currentConvention.end_time || null,
       accepting_bookings: currentConvention.accepting_bookings,
       is_fully_booked: currentConvention.is_fully_booked,
     };
@@ -93,8 +98,6 @@ const ConventionDatesManager = ({ user }) => {
       const { error: updateError } = await supabase.from('convention_dates').update(payload).eq('id', currentConvention.id).select();
       error = updateError;
     } else {
-      payload.created_at = new Date().toISOString();
-      payload.updated_at = new Date().toISOString(); 
       const { error: insertError } = await supabase.from('convention_dates').insert(payload).select();
       error = insertError;
     }
@@ -120,6 +123,15 @@ const ConventionDatesManager = ({ user }) => {
     }
     setIsConventionLoading(false);
   };
+  
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const h = parseInt(hours, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const formattedHours = h % 12 || 12;
+    return `${formattedHours}:${minutes} ${ampm}`;
+  }
 
   const formatDateForInput = (dateString) => {
     if (!dateString) return '';
@@ -151,6 +163,9 @@ const ConventionDatesManager = ({ user }) => {
               <div>
                 <p className="font-medium">{conv.event_name}</p>
                 <p className="text-sm text-muted-foreground">{conv.location} &bull; {formatDateForInput(conv.start_date)} {conv.end_date ? `- ${formatDateForInput(conv.end_date)}` : ''}</p>
+                 {conv.start_time && conv.end_time && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3 text-foreground" /> {formatTime(conv.start_time)} - {formatTime(conv.end_time)}</p>
+                )}
                 <div className="flex items-center gap-2 mt-1 text-xs">
                   {conv.accepting_bookings ? (
                     conv.is_fully_booked ? (
@@ -195,6 +210,16 @@ const ConventionDatesManager = ({ user }) => {
               <div>
                 <Label htmlFor="conv-end-date">End Date (Optional)</Label>
                 <Input id="conv-end-date" type="date" value={formatDateForInput(currentConvention.end_date)} onChange={e => setCurrentConvention({ ...currentConvention, end_date: e.target.value })} min={currentConvention.start_date || ''} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="conv-start-time">Start Time</Label>
+                <Input id="conv-start-time" type="time" value={currentConvention.start_time} onChange={e => setCurrentConvention({ ...currentConvention, start_time: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="conv-end-time">End Time</Label>
+                <Input id="conv-end-time" type="time" value={currentConvention.end_time} onChange={e => setCurrentConvention({ ...currentConvention, end_time: e.target.value })} />
               </div>
             </div>
             <div className="space-y-2 pt-2">
