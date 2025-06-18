@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import ArtistHeader from '@/components/profile/ArtistHeader';
+import ArtistInfoCard from '@/components/profile/ArtistInfoCard'; // Import the new component
 import PortfolioGrid from '@/components/profile/PortfolioGrid';
 import ReviewsSection from '@/components/profile/ReviewsSection';
 import ConventionDatesSection from '@/components/profile/ConventionDatesSection';
@@ -67,7 +68,6 @@ const ArtistProfile = () => {
       
       setArtist(artistData);
 
-      // Fetch all related data in parallel
       const [
         { count: currentFollowerCount },
         { data: portfolioData },
@@ -87,7 +87,6 @@ const ArtistProfile = () => {
       const allConventions = conventionsData || [];
       setConventionDates(allConventions);
 
-      // ***** FIX: Correctly find and set the next upcoming convention *****
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const upcomingConvention = allConventions
@@ -95,7 +94,6 @@ const ArtistProfile = () => {
           .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))[0];
       setNextConvention(upcomingConvention || null);
 
-      // Check follow status if a user is logged in
       if (user && artistData.id) {
         const { data: followData } = await supabase
           .from('follows')
@@ -121,6 +119,7 @@ const ArtistProfile = () => {
     }
   }, [fetchArtistData, authLoading, contextProfileLoading]);
 
+  // ... (handleFollow, handleReviewAdded, etc. functions remain the same) ...
   const handleFollow = async () => {
     if (!user) {
       toast({ title: "Please sign in", description: "You need to be logged in to follow artists.", variant: "destructive" });
@@ -172,7 +171,7 @@ const ArtistProfile = () => {
   };
 
   const handleWorksClick = () => portfolioRef.current?.scrollIntoView({ behavior: 'smooth' });
-  
+
   const isLoading = authLoading || contextProfileLoading || pageLoading;
 
   if (isLoading) {
@@ -203,6 +202,10 @@ const ArtistProfile = () => {
             isFollowing={isFollowing} 
             handleFollow={handleFollow}
             onWorksClick={handleWorksClick}
+          />
+          {/* Render the new info card here */}
+          <ArtistInfoCard 
+            artist={artist} 
             nextConvention={nextConvention} 
           />
         </motion.div>
@@ -221,7 +224,7 @@ const ArtistProfile = () => {
         )}
 
         <ArtistDealsDisplay artistId={artist.id} />
-        <ConventionDatesSection artistId={artist.id} dates={conventionDates} loading={isLoading} />
+        <ConventionDatesSection artistId={artist.id} artistProfile={artist} dates={conventionDates} loading={isLoading} />
         <ArtistPostsDisplay artistId={artist.id} artistUsername={artist.username} artistName={artist.name} artistProfilePhotoUrl={artist.profile_photo_url} />
 
         <div ref={portfolioRef}>
