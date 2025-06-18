@@ -49,8 +49,8 @@ const ProfileSettings = () => {
       <ProfileForm
         formData={formData}
         setFormData={setFormData}
-        handleProfilePhotoChange={(e) => handleFileChange(e, 'setProfilePhotoFile', 'profilePhotoUrl')}
-        handleLocationThumbnailChange={(e) => handleFileChange(e, 'setLocationThumbnailFile', 'locationThumbnailUrl')}
+        handleProfilePhotoChange={(e) => handleFileChange(e, setProfilePhotoFile, 'profilePhotoUrl')}
+        handleLocationThumbnailChange={(e) => handleFileChange(e, setLocationThumbnailFile, 'locationThumbnailUrl')}
         isUploading={isUploading}
         isSaving={isSaving}
         isGeocoding={isGeocoding}
