@@ -74,7 +74,7 @@ const ConventionDatesSection = ({ artistId, artistProfile, dates, loading }) => 
       >
         <h2 className="text-2xl font-bold mb-4 flex items-center">
           <CalendarDays className="w-6 h-6 mr-3 text-primary" />
-          Tour Dates
+          Convention Dates
         </h2>
         <div className="glass-effect rounded-xl p-4 space-y-2">
           {dates.map((event) => (
