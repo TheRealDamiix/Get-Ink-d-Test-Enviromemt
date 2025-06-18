@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
@@ -18,9 +17,10 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
+        {/* Updated for full-height flexible layout */}
+        <div className="h-screen flex flex-col bg-background text-foreground">
           <Navbar />
-          <main className="flex-grow overflow-y-auto">
+          <main className="flex-1 overflow-hidden">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/feed" element={<NewsFeedPage />} />
