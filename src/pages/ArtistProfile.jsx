@@ -87,13 +87,13 @@ const ArtistProfile = () => {
       const allConventions = conventionsData || [];
       setConventionDates(allConventions);
 
-      // Find the next upcoming convention
+      // ***** FIX: Correctly find and set the next upcoming convention *****
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const nextUpcomingConvention = allConventions
+      const upcomingConvention = allConventions
           .filter(conv => new Date(conv.start_date) >= today)
           .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))[0];
-      setNextConvention(nextUpcomingConvention || null);
+      setNextConvention(upcomingConvention || null);
 
       // Check follow status if a user is logged in
       if (user && artistData.id) {
