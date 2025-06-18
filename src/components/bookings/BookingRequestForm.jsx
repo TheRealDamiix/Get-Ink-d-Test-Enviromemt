@@ -46,8 +46,6 @@ const BookingRequestForm = ({ artistId, artistName, conventionDateId, onSubmitSu
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'booking_references');
-      formData.append('public_id_name', `booking_${user.id}_${Date.now()}`);
-
       const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-cloudinary', {
         body: formData,
       });
