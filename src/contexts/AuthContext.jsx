@@ -25,18 +25,18 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data, error } = await supabase.rpc('get_total_unread_messages', { p_user_id: userId });
       if (error) throw error;
-      setUnreadCount(data);
+      setUnreadCount(data || 0);
     } catch (error) {
       console.error('Error fetching unread messages count:', error);
     }
   }, []);
-  
+
   const decrementUnreadCount = useCallback((count) => {
     setUnreadCount(prev => Math.max(0, prev - count));
   }, []);
 
   const fetchFullUserProfile = useCallback(async (sessionUser) => {
-    if (!sessionUser) {
+    if (!sessionUser?.id) {
       setUser(null);
       setProfileLoading(false);
       return null;
@@ -46,15 +46,17 @@ export const AuthProvider = ({ children }) => {
       const { data: dbProfile, error: profileError } = await supabase.from('profiles').select('*').eq('id', sessionUser.id).single();
       if (profileError) throw profileError;
 
+      // Combine auth user data with public profile data
       const fullUser = { ...sessionUser, ...dbProfile, profile: dbProfile };
       setUser(fullUser);
+      
       if (fullUser.id) {
         await fetchUnreadCount(fullUser.id);
       }
       return fullUser;
     } catch (error) {
        console.error("Error fetching full profile:", error);
-       setUser(sessionUser); // Fallback to session user
+       setUser(sessionUser); // Fallback to session user data if profile fetch fails
        return sessionUser;
     } finally {
       setProfileLoading(false);
@@ -62,37 +64,43 @@ export const AuthProvider = ({ children }) => {
   }, [fetchUnreadCount]);
 
   useEffect(() => {
-    const initializeAuth = async () => {
-        setLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        await fetchFullUserProfile(session?.user);
-        setLoading(false);
+    const initializeSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await fetchFullUserProfile(session.user);
+      }
+      setLoading(false);
     };
-    initializeAuth();
+    
+    initializeSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        await fetchFullUserProfile(session?.user);
-        if (!session) {
+        if (_event === 'SIGNED_OUT') {
           setUser(null);
+        } else if (session?.user) {
+          await fetchFullUserProfile(session.user);
         }
       }
     );
     return () => subscription?.unsubscribe();
   }, [fetchFullUserProfile]);
-
+  
+  // Realtime subscription for messages
   useEffect(() => {
     let messagesSubscription;
     if (user?.id) {
-        messagesSubscription = supabase
-            .channel(`public:messages:for_user_${user.id}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' },
-                () => fetchUnreadCount(user.id)
-            )
-            .subscribe();
+      messagesSubscription = supabase
+        .channel(`public:messages:for_user_${user.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+          fetchUnreadCount(user.id);
+        })
+        .subscribe();
     }
     return () => {
-      if (messagesSubscription) supabase.removeChannel(messagesSubscription);
+      if (messagesSubscription) {
+        supabase.removeChannel(messagesSubscription);
+      }
     };
   }, [user?.id, fetchUnreadCount]);
 
@@ -103,7 +111,8 @@ export const AuthProvider = ({ children }) => {
   const logout = () => supabase.auth.signOut();
 
   const updateUser = async (updates) => {
-    if (!user) return { error: { message: "No user logged in." }};
+    if (!user) return { data: null, error: { message: "No user is currently logged in." }};
+
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
@@ -111,22 +120,22 @@ export const AuthProvider = ({ children }) => {
       .select()
       .single();
 
-    if (error) {
-      console.error("Error updating profile in DB:", error);
-      return { error };
+    if (!error && data) {
+      // After a successful DB update, refetch the full user profile
+      // to update the context state with the latest data.
+      await fetchFullUserProfile(user); 
     }
-    
-    // Refresh user state with the latest data
-    await fetchFullUserProfile(user);
-    return { user: data, error: null };
+
+    return { data, error };
   };
-  
+
   const deleteAccount = async () => {
-      if (!user) throw new Error("No user logged in to delete.");
-      // It's recommended to call a secure edge function to handle user deletion
-      const { error } = await supabase.rpc('delete_user_account');
-      if (error) throw error;
-      // The onAuthStateChange listener will handle setting user to null
+    if (!user) throw new Error("No user logged in to delete.");
+    // This assumes you have an RPC function in Supabase named 'delete_user_account'.
+    // Creating this function on the backend is crucial for security.
+    const { error } = await supabase.rpc('delete_user_account'); 
+    if (error) throw error;
+    setUser(null);
   };
 
   const value = {
