@@ -3,10 +3,30 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import BookingRequestForm from '@/components/bookings/BookingRequestForm'; 
 import { motion } from 'framer-motion';
 import { CalendarDays, MapPin, Loader2, BookOpen, BookLock, CalendarPlus } from 'lucide-react';
+
+// New compact date formatter
+const formatTourDate = (startDateStr, endDateStr) => {
+    const startDate = new Date(startDateStr);
+    const options = { month: 'short', day: 'numeric', timeZone: 'UTC' };
+    
+    const startFormatted = startDate.toLocaleDateString('en-US', options);
+
+    if (!endDateStr) {
+        return startFormatted;
+    }
+
+    const endDate = new Date(endDateStr);
+    if (startDate.getMonth() === endDate.getMonth()) {
+        return `${startDate.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })} ${startDate.getUTCDate()}-${endDate.getUTCDate()}`;
+    }
+    
+    return `${startFormatted} - ${endDate.toLocaleDateString('en-US', options)}`;
+};
+
 
 const ConventionDatesSection = ({ artistId, artistProfile, dates, loading }) => {
   const { toast } = useToast();
@@ -14,29 +34,15 @@ const ConventionDatesSection = ({ artistId, artistProfile, dates, loading }) => 
   const navigate = useNavigate();
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [selectedConventionForBooking, setSelectedConventionForBooking] = useState(null);
-  const newLogoUrl = "https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png";
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() + userTimezoneOffset).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-  
   const handleRequestBookingForConvention = (convention) => {
     if (!user) {
       toast({ title: "Please sign in", description: "You need to be logged in to request a booking.", variant: "destructive" });
       navigate('/auth');
       return;
     }
-    if (user.id === artistId) {
-      toast({ title: "Cannot book yourself", description: "Artists cannot book their own services.", variant: "destructive" });
-      return;
-    }
-    if (!convention.accepting_bookings || convention.is_fully_booked) {
-      toast({ title: "Booking Not Available", description: "This artist is not accepting bookings for this event or is fully booked.", variant: "default" });
-      return;
-    }
+    if (user.id === artistId) return;
+    if (!convention.accepting_bookings || convention.is_fully_booked) return;
     setSelectedConventionForBooking(convention);
     setShowBookingDialog(true);
   };
@@ -64,74 +70,58 @@ const ConventionDatesSection = ({ artistId, artistProfile, dates, loading }) => 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="my-8 p-6 glass-effect rounded-xl"
+        className="my-8"
       >
-        <h2 className="text-2xl font-bold mb-6 flex items-center">
+        <h2 className="text-2xl font-bold mb-4 flex items-center">
           <CalendarDays className="w-6 h-6 mr-3 text-primary" />
-          Convention & Guest Spot Dates
+          Tour Dates
         </h2>
-        <div className="space-y-4">
-          {dates.map((event, index) => (
-            <motion.div 
+        <div className="glass-effect rounded-xl p-4 space-y-2">
+          {dates.map((event) => (
+            <div 
               key={event.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="p-4 border border-border/50 rounded-lg hover:border-primary/70 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
+              className="flex items-center justify-between p-2 border-b border-border/20 last:border-b-0"
             >
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-primary">{event.event_name}</h3>
-                <div className="flex items-center text-sm text-muted-foreground mt-1">
-                  <MapPin className="w-4 h-4 mr-2 text-foreground" />
-                  <span>{event.location}</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {formatDate(event.start_date)}
-                  {event.end_date && ` - ${formatDate(event.end_date)}`}
-                </p>
-                <div className="flex items-center gap-2 mt-2 text-xs">
-                  {event.accepting_bookings ? (
-                    event.is_fully_booked ? (
-                      <span className="flex items-center text-orange-500"><BookLock className="w-3 h-3 mr-1" /> Fully Booked</span>
-                    ) : (
-                      <span className="flex items-center text-green-500"><BookOpen className="w-3 h-3 mr-1" /> Accepting Bookings</span>
-                    )
-                  ) : (
-                    <span className="flex items-center text-red-500"><BookLock className="w-3 h-3 mr-1" /> Bookings Closed</span>
-                  )}
-                </div>
+              <div className="flex items-center gap-4">
+                  <div className="text-center w-16 flex-shrink-0">
+                      <p className="text-sm font-bold text-primary uppercase">{formatTourDate(event.start_date, event.end_date)}</p>
+                  </div>
+                  <div>
+                      <h3 className="font-semibold text-foreground">{event.event_name}</h3>
+                      <p className="text-xs text-muted-foreground">{event.location}</p>
+                  </div>
               </div>
-              {event.accepting_bookings && !event.is_fully_booked && user && user.id !== artistId && (
+              
+              {event.accepting_bookings && !event.is_fully_booked && user && user.id !== artistId ? (
                 <Button 
                   size="sm" 
-                  className="ink-gradient mt-2 sm:mt-0"
+                  variant="outline"
                   onClick={() => handleRequestBookingForConvention(event)}
+                  className="ml-4 flex-shrink-0"
                 >
-                  <CalendarPlus className="w-4 h-4 mr-2" /> Request Booking
+                  Book
                 </Button>
+              ) : (
+                <div className="text-xs text-muted-foreground ml-4 flex-shrink-0">
+                    {event.is_fully_booked ? 'Booked' : 'Closed'}
+                </div>
               )}
-            </motion.div>
+            </div>
           ))}
         </div>
       </motion.div>
 
       <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
-        <DialogContent className="glass-effect p-0 relative flex flex-col max-h-[90vh]">
-            <div 
-                style={{ backgroundImage: `url(${newLogoUrl})` }} 
-                className="absolute inset-0 bg-center bg-contain bg-no-repeat opacity-5 z-0"
+        <DialogContent className="glass-effect">
+            <DialogHeader>
+                <DialogTitle>Request Booking for {selectedConventionForBooking?.event_name}</DialogTitle>
+            </DialogHeader>
+            <BookingRequestForm 
+                artistId={artistId} 
+                artistName={artistProfile?.name || artistProfile?.username}
+                conventionDateId={selectedConventionForBooking?.id}
+                onSubmitSuccess={() => setShowBookingDialog(false)}
             />
-            <div className="relative z-10 p-6 space-y-4 overflow-y-auto custom-scrollbar">
-                <DialogHeader>
-                    <DialogTitle>Request Booking for {selectedConventionForBooking?.event_name}</DialogTitle>
-                </DialogHeader>
-                <BookingRequestForm 
-                    artistId={artistId} 
-                    artistName={artistProfile?.name || artistProfile?.username}
-                    conventionDateId={selectedConventionForBooking?.id}
-                    onSubmitSuccess={() => setShowBookingDialog(false)}
-                />
-            </div>
         </DialogContent>
       </Dialog>
     </>
