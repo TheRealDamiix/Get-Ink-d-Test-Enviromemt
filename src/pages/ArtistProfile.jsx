@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import ArtistHeader from '@/components/profile/ArtistHeader';
-import ArtistInfoCard from '@/components/profile/ArtistInfoCard'; // Import the new component
+import ArtistInfoCard from '@/components/profile/ArtistInfoCard';
 import PortfolioGrid from '@/components/profile/PortfolioGrid';
 import ReviewsSection from '@/components/profile/ReviewsSection';
 import ConventionDatesSection from '@/components/profile/ConventionDatesSection';
@@ -13,7 +13,7 @@ import ArtistDealsDisplay from '@/components/profile/ArtistDealsDisplay';
 import ImageDialog from '@/components/profile/ImageDialog';
 import BookingRequestForm from '@/components/bookings/BookingRequestForm';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabaseClient';
 import { Loader2, CalendarPlus, MessageSquare } from 'lucide-react';
 
@@ -32,12 +32,10 @@ const ArtistProfile = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [pageLoading, setPageLoading] = useState(true);
   const [showBookingDialog, setShowBookingDialog] = useState(false);
-  const [bookingContext, setBookingContext] = useState({ conventionDateId: null, generalBooking: false });
   const portfolioRef = useRef(null);
-  const newLogoUrl = "https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png";
-
 
   const fetchArtistData = useCallback(async () => {
+    // ... (fetchArtistData logic is correct and remains the same)
     setPageLoading(true);
     setArtist(null); 
     setReviews([]);
@@ -119,9 +117,9 @@ const ArtistProfile = () => {
     }
   }, [fetchArtistData, authLoading, contextProfileLoading]);
 
-  // ... (handleFollow, handleReviewAdded, etc. functions remain the same) ...
   const handleFollow = async () => {
-    if (!user) {
+    // ... (handleFollow logic is correct and remains the same)
+     if (!user) {
       toast({ title: "Please sign in", description: "You need to be logged in to follow artists.", variant: "destructive" });
       return;
     }
@@ -139,7 +137,8 @@ const ArtistProfile = () => {
   };
   
   const handleReviewAdded = async (reviewData) => {
-    if (!user || !artist) return;
+    // ... (handleReviewAdded logic is correct and remains the same)
+     if (!user || !artist) return;
     try {
         const { data: newReview } = await supabase.from('reviews').insert({ artist_id: artist.id, reviewer_id: user.id, ...reviewData }).select('*, reviewer:profiles!reviews_reviewer_id_fkey(*)').single();
         if (newReview) setReviews(prev => [newReview, ...prev]);
@@ -149,29 +148,62 @@ const ArtistProfile = () => {
     }
   };
 
-  const openBookingDialog = (conventionId = null) => {
+  const openBookingDialog = () => {
     if (!user) {
       toast({ title: "Please sign in", description: "You need to be logged in to request a booking.", variant: "destructive" });
       navigate('/auth');
       return;
     }
     if (user.id === artist?.id) return;
-    setBookingContext({ conventionDateId: conventionId, generalBooking: !conventionId });
     setShowBookingDialog(true);
   };
-  
+
+  // ***** FIX: Robust message handling *****
   const handleMessageArtist = async () => {
-    if (!user || !artist) return;
-     try {
-        const { data: existing } = await supabase.rpc('start_or_get_conversation', { p_user1_id: user.id, p_user2_id: artist.id }).single();
-        if (existing?.conversation_id) navigate(`/chat?conversationId=${existing.conversation_id}`);
+    if (!user) {
+      toast({ title: "Please sign in", description: "You must be logged in to message artists.", variant: "destructive" });
+      navigate('/auth');
+      return;
+    }
+    if (!artist || !artist.id) {
+      toast({ title: "Error", description: "Artist data not available.", variant: "destructive" });
+      return;
+    }
+    if (user.id === artist.id) {
+      toast({ title: "Cannot message yourself", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const orFilter = `and(user1_id.eq.${user.id},user2_id.eq.${artist.id}),and(user1_id.eq.${artist.id},user2_id.eq.${user.id})`;
+      const { data: existing, error: fetchError } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(orFilter)
+        .maybeSingle();
+      
+      if (fetchError) throw fetchError;
+
+      if (existing) {
+        navigate(`/chat?conversationId=${existing.id}`);
+      } else {
+        const { data: newConversation, error: createError } = await supabase
+          .from('conversations')
+          .insert({ user1_id: user.id, user2_id: artist.id })
+          .select('id')
+          .single();
+        
+        if (createError) throw createError;
+        
+        navigate(`/chat?conversationId=${newConversation.id}`);
+      }
     } catch (error) {
-        toast({ title: "Error", description: `Could not start conversation: ${error.message}`, variant: "destructive" });
+      toast({ title: "Error Starting Chat", description: `Could not start or find conversation: ${error.message}`, variant: "destructive" });
     }
   };
 
   const handleWorksClick = () => portfolioRef.current?.scrollIntoView({ behavior: 'smooth' });
-
+  
   const isLoading = authLoading || contextProfileLoading || pageLoading;
 
   if (isLoading) {
@@ -183,7 +215,6 @@ const ArtistProfile = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center p-8 glass-effect rounded-xl">
           <h2 className="text-3xl font-bold mb-3 ink-text-gradient">Artist Not Found</h2>
-          <p className="text-muted-foreground mb-6">The artist profile for <span className="font-semibold text-foreground">@{username}</span> couldn't be loaded.</p>
           <Button onClick={() => navigate('/')}>Go to Homepage</Button>
         </div>
       </div>
@@ -196,24 +227,14 @@ const ArtistProfile = () => {
     <div className="min-h-screen py-8 px-4">
       <div className="container mx-auto max-w-4xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <ArtistHeader 
-            artist={artistHeaderData} 
-            reviews={reviews} 
-            isFollowing={isFollowing} 
-            handleFollow={handleFollow}
-            onWorksClick={handleWorksClick}
-          />
-          {/* Render the new info card here */}
-          <ArtistInfoCard 
-            artist={artist} 
-            nextConvention={nextConvention} 
-          />
+          <ArtistHeader artist={artistHeaderData} reviews={reviews} isFollowing={isFollowing} handleFollow={handleFollow} onWorksClick={handleWorksClick}/>
+          <ArtistInfoCard artist={artist} nextConvention={nextConvention} />
         </motion.div>
 
         {user && user.id !== artist.id && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="my-6 flex flex-col sm:flex-row justify-center items-center gap-4">
             {artist.booking_status && (
-              <Button onClick={() => openBookingDialog()} className="ink-gradient px-8 py-6 text-lg w-full sm:w-auto">
+              <Button onClick={openBookingDialog} className="ink-gradient px-8 py-6 text-lg w-full sm:w-auto">
                 <CalendarPlus className="w-5 h-5 mr-2" /> Request General Booking
               </Button>
             )}
@@ -227,25 +248,19 @@ const ArtistProfile = () => {
         <ConventionDatesSection artistId={artist.id} artistProfile={artist} dates={conventionDates} loading={isLoading} />
         <ArtistPostsDisplay artistId={artist.id} artistUsername={artist.username} artistName={artist.name} artistProfilePhotoUrl={artist.profile_photo_url} />
 
-        <div ref={portfolioRef}>
-          {portfolio?.length > 0 && <PortfolioGrid portfolio={portfolio} onImageSelect={setSelectedImage} />}
-        </div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          <ReviewsSection reviews={reviews} artistId={artist.id} artistProfile={artist} onReviewAdded={handleReviewAdded} />
-        </motion.div>
+        <div ref={portfolioRef}><PortfolioGrid portfolio={portfolio} onImageSelect={setSelectedImage} /></div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}><ReviewsSection reviews={reviews} artistId={artist.id} artistProfile={artist} onReviewAdded={handleReviewAdded} /></motion.div>
       </div>
 
       <ImageDialog selectedImage={selectedImage} artist={artist} onOpenChange={(isOpen) => !isOpen && setSelectedImage(null)} />
+      
+      {/* ***** FIX: Simplified and scrollable Dialog ***** */}
       <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
-        <DialogContent className="glass-effect p-0 relative flex flex-col max-h-[90vh]">
-            <div style={{ backgroundImage: `url(${newLogoUrl})` }} className="absolute inset-0 bg-center bg-contain bg-no-repeat opacity-5 z-0" />
-            <div className="relative z-10 p-6 space-y-4 overflow-y-auto custom-scrollbar">
-                <DialogHeader>
-                    <DialogTitle>Request Booking with {artist.name || artist.username}</DialogTitle>
-                </DialogHeader>
-                <BookingRequestForm artistId={artist.id} artistName={artist.name || artist.username} conventionDateId={bookingContext.conventionDateId} onSubmitSuccess={() => setShowBookingDialog(false)} />
-            </div>
+        <DialogContent className="glass-effect sm:max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <DialogHeader>
+                <DialogTitle>Request Booking with {artist.name || artist.username}</DialogTitle>
+            </DialogHeader>
+            <BookingRequestForm artistId={artist.id} artistName={artist.name || artist.username} onSubmitSuccess={() => setShowBookingDialog(false)} />
         </DialogContent>
       </Dialog>
     </div>
