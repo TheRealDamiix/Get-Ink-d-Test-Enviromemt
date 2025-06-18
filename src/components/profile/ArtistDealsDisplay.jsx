@@ -1,9 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Loader2, Tag, CalendarOff, DollarSign, CalendarClock, X } from 'lucide-react';
+import { Loader2, Tag, DollarSign, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
@@ -20,12 +19,12 @@ const ArtistDealsDisplay = ({ artistId }) => {
       return;
     }
     setIsLoading(true);
-    const today = new Date().toISOString().split('T')[0]; 
+    const today = new Date().toISOString().split('T')[0];
     const { data, error } = await supabase
       .from('artist_deals')
       .select('*')
       .eq('artist_id', artistId)
-      .or(`valid_until.gte.${today},valid_until.is.null`) 
+      .or(`valid_until.gte.${today},valid_until.is.null`)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -39,7 +38,7 @@ const ArtistDealsDisplay = ({ artistId }) => {
   useEffect(() => {
     fetchDeals();
   }, [fetchDeals]);
-  
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Ongoing';
     const date = new Date(dateString);
@@ -60,7 +59,7 @@ const ArtistDealsDisplay = ({ artistId }) => {
 
   return (
     <>
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="my-8"
@@ -71,25 +70,33 @@ const ArtistDealsDisplay = ({ artistId }) => {
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {deals.map((deal, index) => (
-            <motion.button 
+            <motion.button
               key={deal.id}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.05 }}
               onClick={() => setSelectedDeal(deal)}
-              className="text-left p-3 glass-effect rounded-xl hover:border-primary/70 transition-all border border-transparent flex flex-col items-center justify-center aspect-square"
+              // Apply background image and styles
+              style={deal.image_url ? { backgroundImage: `url(${deal.image_url})` } : {}}
+              className="relative text-left p-3 glass-effect rounded-xl hover:border-primary/70 transition-all border border-transparent flex flex-col items-center justify-center aspect-square overflow-hidden bg-cover bg-center group"
             >
-              <div className="flex-grow flex items-center justify-center">
-                {deal.price !== null ? (
-                    <div className="text-center">
-                        <DollarSign className="w-8 h-8 mx-auto text-green-400 mb-1" />
-                        <p className="text-2xl font-bold text-green-400">${Number(deal.price).toFixed(0)}</p>
-                    </div>
-                ) : (
-                    <Tag className="w-10 h-10 text-primary" />
-                )}
+              {/* Overlay to ensure text readability */}
+              <div className="absolute inset-0 bg-black/60 group-hover:bg-black/50 transition-colors"></div>
+
+              {/* Foreground content */}
+              <div className="relative z-10 flex flex-col items-center justify-center text-center h-full text-white">
+                 <div className="flex-grow flex items-center justify-center">
+                    {deal.price !== null ? (
+                        <div>
+                            <DollarSign className="w-8 h-8 mx-auto text-green-400 mb-1" />
+                            <p className="text-2xl font-bold text-green-400">${Number(deal.price).toFixed(0)}</p>
+                        </div>
+                    ) : (
+                        <Tag className="w-10 h-10 text-primary" />
+                    )}
+                </div>
+                <p className="text-xs font-semibold mt-2 line-clamp-2">{deal.title}</p>
               </div>
-              <p className="text-xs font-semibold text-center mt-2 line-clamp-2">{deal.title}</p>
             </motion.button>
           ))}
         </div>
