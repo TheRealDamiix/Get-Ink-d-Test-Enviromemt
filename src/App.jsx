@@ -20,7 +20,8 @@ function App() {
         {/* Updated for full-height flexible layout */}
         <div className="h-screen flex flex-col bg-background text-foreground">
           <Navbar />
-          <main className="flex-1 overflow-hidden">
+          {/* The main content area is now scrollable */}
+          <main className="flex-1 overflow-y-auto custom-scrollbar">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/feed" element={<NewsFeedPage />} />
