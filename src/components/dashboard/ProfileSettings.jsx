@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -6,6 +5,7 @@ import ProfileForm from '@/components/dashboard/profile_settings/ProfileForm';
 import ConventionDatesManager from '@/components/dashboard/profile_settings/ConventionDatesManager';
 import UserPostsManager from '@/components/dashboard/profile_settings/ArtistPostsManager';
 import ArtistDealsManager from '@/components/dashboard/profile_settings/ArtistDealsManager';
+import AvailabilityManager from '@/components/dashboard/profile_settings/AvailabilityManager'; // Import the new component
 import { useProfileSettings } from '@/hooks/useProfileSettings';
 
 const ProfileSettings = () => {
@@ -60,6 +60,7 @@ const ProfileSettings = () => {
         user={user}
       />
 
+      {displayIsArtist && <AvailabilityManager />}
       {displayIsArtist && <ArtistDealsManager user={user} />}
       {displayIsArtist && <ConventionDatesManager user={user} />}
       <UserPostsManager user={user} />
