@@ -4,10 +4,43 @@ import { motion } from 'framer-motion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Users, MessageSquare, Image as ImageIcon, Star, Edit3, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+import { MapPin, Users, MessageSquare, Image as ImageIcon, Star, Edit3, CheckCircle, XCircle, ExternalLink, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import FollowersDialog from '@/components/profile/FollowersDialog';
 import AllArtistReviewsDialog from '@/components/profile/AllArtistReviewsDialog';
+
+
+// Helper function to format availability for display
+const formatAvailability = (availability) => {
+  if (!availability || typeof availability !== 'object' || Object.keys(availability).length === 0) {
+    return [];
+  }
+
+  const daysOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const h = parseInt(hours, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const formattedHours = h % 12 || 12;
+    return `${formattedHours}:${minutes} ${ampm}`;
+  };
+
+  return daysOrder
+    .map(day => {
+        const dayInfo = availability[day];
+        if (dayInfo && dayInfo.active && dayInfo.start && dayInfo.end) {
+            return {
+                day: day.charAt(0).toUpperCase() + day.slice(1),
+                hours: `${formatTime(dayInfo.start)} - ${formatTime(dayInfo.end)}`
+            };
+        }
+        return null;
+    })
+    .filter(Boolean);
+};
+
 
 const ArtistHeader = ({ artist, reviews, isFollowing, handleFollow, onWorksClick }) => {
   const { user } = useAuth();
@@ -23,6 +56,8 @@ const ArtistHeader = ({ artist, reviews, isFollowing, handleFollow, onWorksClick
     : 0;
 
   const canEdit = user && user.id === artist.id;
+  
+  const formattedAvailability = formatAvailability(artist.general_availability);
 
   const isValidUrl = (string) => {
     try {
@@ -38,7 +73,7 @@ const ArtistHeader = ({ artist, reviews, isFollowing, handleFollow, onWorksClick
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-effect rounded-2xl p-4 md:p-6 mb-8 relative overflow-hidden" // Reduced padding
+        className="glass-effect rounded-2xl p-4 md:p-6 mb-8 relative overflow-hidden"
       >
         {artist.location_thumbnail_url && (
           <div 
@@ -48,15 +83,15 @@ const ArtistHeader = ({ artist, reviews, isFollowing, handleFollow, onWorksClick
         )}
         <div className="relative z-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-4">
-            <Avatar className="w-20 h-20 md:w-24 md:h-24 border-4 border-primary/70 shadow-lg"> {/* Smaller Avatar */}
+            <Avatar className="w-20 h-20 md:w-24 md:h-24 border-4 border-primary/70 shadow-lg">
               <AvatarImage src={artist.profile_photo_url} alt={artist.name} />
               <AvatarFallback className="ink-gradient text-3xl md:text-4xl text-primary-foreground">
                 {artist.name?.charAt(0)?.toUpperCase() || artist.username?.charAt(0)?.toUpperCase() || 'A'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 text-center sm:text-left">
-              <h1 className="text-2xl md:text-3xl font-bold">{artist.name || 'Unnamed Artist'}</h1> {/* Smaller Font */}
-              <p className="text-md text-muted-foreground mb-1">@{artist.username}</p> {/* Smaller Font */}
+              <h1 className="text-2xl md:text-3xl font-bold">{artist.name || 'Unnamed Artist'}</h1>
+              <p className="text-md text-muted-foreground mb-1">@{artist.username}</p>
               {artist.location && (
                 <p className="text-xs text-muted-foreground flex items-center justify-center sm:justify-start">
                   <MapPin className="w-3 h-3 mr-1.5 text-foreground" /> {artist.location}
@@ -72,7 +107,7 @@ const ArtistHeader = ({ artist, reviews, isFollowing, handleFollow, onWorksClick
               <Button 
                 onClick={handleFollow} 
                 variant={isFollowing ? "outline" : "default"}
-                size="sm" // Smaller button
+                size="sm"
                 className={`mt-2 sm:mt-0 ${isFollowing ? '' : 'ink-gradient'}`}
               >
                 {isFollowing ? 'Unfollow' : 'Follow'}
@@ -87,9 +122,9 @@ const ArtistHeader = ({ artist, reviews, isFollowing, handleFollow, onWorksClick
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center mb-4"> {/* Reduced gap */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-center mb-4"> {/* ICONS MOVED CLOSER - gap-1 */}
             <button onClick={() => artist.followers_count > 0 && setShowFollowersDialog(true)} className={`p-2 rounded-lg ${artist.followers_count > 0 ? 'hover:bg-primary/10 cursor-pointer' : 'cursor-default'}`}>
-              <Users className="w-5 h-5 mx-auto mb-1 text-primary" /> {/* Smaller Icon */}
+              <Users className="w-5 h-5 mx-auto mb-1 text-primary" />
               <p className="text-sm font-semibold">{artist.followers_count || 0}</p>
               <p className="text-xs text-muted-foreground">Followers</p>
             </button>
@@ -111,6 +146,26 @@ const ArtistHeader = ({ artist, reviews, isFollowing, handleFollow, onWorksClick
           </div>
           
           {artist.bio && <p className="text-sm text-foreground/90 mb-4 text-center md:text-left leading-relaxed">{artist.bio}</p>}
+
+           {/* GENERAL AVAILABILITY SECTION */}
+          {formattedAvailability.length > 0 && (
+            <div className="mb-4 pt-3 border-t border-border/20">
+              <h3 className="text-sm font-semibold mb-2 flex items-center text-foreground">
+                <Clock className="w-4 h-4 mr-2 text-primary" />
+                General Availability
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                {formattedAvailability.map(item => (
+                  <div key={item.day} className="flex justify-between">
+                    <span className="font-medium text-foreground/90">{item.day}:</span>
+                    <span className="text-muted-foreground">{item.hours}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* END GENERAL AVAILABILITY */}
+
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3 border-t border-border/30">
              {artist.styles && artist.styles.length > 0 && (
