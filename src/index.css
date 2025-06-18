@@ -33,7 +33,7 @@
   }
   /* Updated for full-screen layout */
   html, body, #root {
-    @apply h-full overflow-hidden;
+    @apply h-full; /* removed overflow-hidden */
   }
   body {
     @apply bg-background text-foreground;
