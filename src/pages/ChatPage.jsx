@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, MessageSquare, Info } from 'lucide-react';
+import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import ConversationList from '@/components/chat/ConversationList';
 import MessageArea from '@/components/chat/MessageArea';
 import ArtistInfoPanel from '@/components/chat/ArtistInfoPanel';
-import { Button } from '@/components/ui/button';
+import UserInfoPanel from '@/components/chat/UserInfoPanel';
 
 const ChatPage = () => {
   const { user, loading: authLoading, fetchUnreadCount, decrementUnreadCount } = useAuth();
@@ -21,7 +21,6 @@ const ChatPage = () => {
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 1024);
-  const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [selectedConversationDetails, setSelectedConversationDetails] = useState({ otherUser: null, bookings: [] });
 
   const fetchConversations = useCallback(async () => {
@@ -59,7 +58,6 @@ const ChatPage = () => {
     }
     
     try {
-      // ***** FIX: Corrected the .or() filter syntax *****
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select('*')
@@ -96,7 +94,8 @@ const ChatPage = () => {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 text-primary animate-spin" /></div>;
   }
   
-  const selectedArtist = selectedConversationDetails.otherUser?.is_artist ? selectedConversationDetails.otherUser : null;
+  const currentUserIsArtist = user?.profile?.is_artist;
+  const otherUser = selectedConversationDetails.otherUser;
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-2 sm:p-4">
@@ -118,11 +117,7 @@ const ChatPage = () => {
           <div style={{ backgroundImage: `url(https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png)` }} className="absolute inset-0 bg-center bg-contain bg-no-repeat opacity-[0.02] z-0 pointer-events-none" />
           <div className="relative z-10 flex flex-col h-full">
             {selectedConversationId ? (
-              <MessageArea 
-                  key={selectedConversationId}
-                  conversationId={selectedConversationId} 
-                  otherUser={selectedConversationDetails.otherUser}
-                />
+              <MessageArea key={selectedConversationId} conversationId={selectedConversationId} otherUser={otherUser} />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-4 text-center">
                  <MessageSquare className="w-16 h-16 mb-4 text-primary/70" />
@@ -131,11 +126,19 @@ const ChatPage = () => {
             )}
           </div>
         </div>
-
-        {(selectedArtist) && (
-            <div className="w-[320px] flex-shrink-0 border-l border-border/50 hidden lg:block">
-                <ArtistInfoPanel artist={selectedArtist} bookings={selectedConversationDetails.bookings} />
-            </div>
+        
+        {otherUser && !isMobileView && (
+          <div className="w-[320px] flex-shrink-0 border-l border-border/50">
+            {currentUserIsArtist ? (
+              <UserInfoPanel 
+                client={otherUser} 
+                artist={user.profile} 
+                bookings={selectedConversationDetails.bookings} 
+              />
+            ) : (
+              otherUser.is_artist && <ArtistInfoPanel artist={otherUser} bookings={selectedConversationDetails.bookings} />
+            )}
+          </div>
         )}
       </motion.div>
     </div>
