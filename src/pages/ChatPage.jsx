@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Loader2, MessageSquare, Info } from 'lucide-react';
+import { Loader2, MessageSquare, Info } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -58,12 +58,12 @@ const ChatPage = () => {
       setConversations(prev => prev.map(c => c.id === conversationId ? { ...c, unread_count: 0 } : c));
     }
     
-    // Fetch bookings for the info panel
     try {
+      // ***** FIX: Corrected the .or() filter syntax *****
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select('*')
-        .or(`(artist_id.eq.${conversation.otherUser.id},client_id.eq.${user.id}),(artist_id.eq.${user.id},client_id.eq.${conversation.otherUser.id})`)
+        .or(`and(artist_id.eq.${conversation.otherUser.id},client_id.eq.${user.id}),and(artist_id.eq.${user.id},client_id.eq.${conversation.otherUser.id})`)
         .order('requested_datetime', { ascending: false });
 
       if(bookingsError) throw bookingsError;
@@ -105,7 +105,6 @@ const ChatPage = () => {
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-7xl h-full glass-effect rounded-2xl shadow-2xl overflow-hidden flex border border-border/30"
       >
-        {/* Conversation List (Sidebar) */}
         <div className={cn("border-r border-border/50 p-2 sm:p-4 flex-col", isMobileView ? (selectedConversationId ? 'hidden md:flex w-full md:w-1/3' : 'flex w-full') : 'flex w-[320px]')}>
           <ConversationList 
             conversations={conversations} 
@@ -115,45 +114,26 @@ const ChatPage = () => {
           />
         </div>
 
-        {/* Main Chat Area */}
         <div className={cn("flex flex-col flex-1 relative", isMobileView && !selectedConversationId && "hidden")}>
-           {/* Faint Background Logo */}
-          <div 
-            style={{ backgroundImage: `url(https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png)` }} 
-            className="absolute inset-0 bg-center bg-contain bg-no-repeat opacity-[0.02] z-0 pointer-events-none"
-          />
+          <div style={{ backgroundImage: `url(https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png)` }} className="absolute inset-0 bg-center bg-contain bg-no-repeat opacity-[0.02] z-0 pointer-events-none" />
           <div className="relative z-10 flex flex-col h-full">
             {selectedConversationId ? (
-              <>
-                 <header className="p-3 border-b border-border/50 flex items-center justify-between gap-3 flex-shrink-0 bg-card/20">
-                    <div className="flex items-center gap-3">
-                      {/* Avatar and Name here are handled inside MessageArea */}
-                    </div>
-                    {selectedArtist && (
-                       <Button variant="ghost" size="icon" onClick={() => setShowInfoPanel(!showInfoPanel)}>
-                           <Info className="w-5 h-5" />
-                       </Button>
-                    )}
-                 </header>
-                 <MessageArea 
+              <MessageArea 
                   key={selectedConversationId}
                   conversationId={selectedConversationId} 
                   otherUser={selectedConversationDetails.otherUser}
                 />
-              </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-4 text-center">
                  <MessageSquare className="w-16 h-16 mb-4 text-primary/70" />
                  <h2 className="text-xl font-bold">Select a conversation</h2>
-                 <p className="text-sm">Start chatting with artists and clients.</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Artist Info Panel */}
-        {(selectedArtist && (isMobileView ? showInfoPanel : true)) && (
-            <div className={cn("border-l border-border/50", isMobileView ? 'absolute top-0 right-0 h-full z-20 w-4/5 max-w-[320px] bg-background' : 'w-[320px] flex-shrink-0')}>
+        {(selectedArtist) && (
+            <div className="w-[320px] flex-shrink-0 border-l border-border/50 hidden lg:block">
                 <ArtistInfoPanel artist={selectedArtist} bookings={selectedConversationDetails.bookings} />
             </div>
         )}
