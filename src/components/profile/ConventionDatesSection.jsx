@@ -1,17 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import { CalendarDays, MapPin, Loader2, BookOpen, BookLock, CalendarPlus } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import BookingRequestForm from '@/components/bookings/BookingRequestForm'; 
-import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { CalendarDays, MapPin, Loader2, BookOpen, BookLock, CalendarPlus } from 'lucide-react';
 
-const ConventionDatesSection = ({ artistId, artistProfile }) => {
-  const [dates, setDates] = useState([]);
-  const [loading, setLoading] = useState(true);
+const ConventionDatesSection = ({ artistId, artistProfile, dates, loading }) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -19,37 +16,13 @@ const ConventionDatesSection = ({ artistId, artistProfile }) => {
   const [selectedConventionForBooking, setSelectedConventionForBooking] = useState(null);
   const newLogoUrl = "https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png";
 
-  useEffect(() => {
-    const fetchConventionDates = async () => {
-      if (!artistId) return;
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('convention_dates')
-        .select('*')
-        .eq('artist_id', artistId)
-        .order('start_date', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching convention dates:', error);
-        toast({ title: "Error", description: "Could not load convention dates.", variant: "destructive" });
-      } else {
-        setDates(data || []);
-      }
-      setLoading(false);
-    };
-
-    fetchConventionDates();
-  }, [artistId, toast]);
-
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    // Adjust for timezone offset to display the date as it was entered
     const userTimezoneOffset = date.getTimezoneOffset() * 60000;
     return new Date(date.getTime() + userTimezoneOffset).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
   
-
   const handleRequestBookingForConvention = (convention) => {
     if (!user) {
       toast({ title: "Please sign in", description: "You need to be logged in to request a booking.", variant: "destructive" });
@@ -68,12 +41,10 @@ const ConventionDatesSection = ({ artistId, artistProfile }) => {
     setShowBookingDialog(true);
   };
 
-
   if (loading) {
     return (
       <div className="my-8 p-6 glass-effect rounded-xl text-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-        <p className="text-muted-foreground mt-2">Loading Convention Dates...</p>
       </div>
     );
   }
@@ -153,19 +124,12 @@ const ConventionDatesSection = ({ artistId, artistProfile }) => {
             <div className="relative z-10 p-6 space-y-4 overflow-y-auto custom-scrollbar">
                 <DialogHeader>
                     <DialogTitle>Request Booking for {selectedConventionForBooking?.event_name}</DialogTitle>
-                    <DialogDescription>
-                        Fill out the form to request a booking with {artistProfile?.name || artistProfile?.username} during this event.
-                        Event Dates: {formatDate(selectedConventionForBooking?.start_date)} {selectedConventionForBooking?.end_date ? ` - ${formatDate(selectedConventionForBooking?.end_date)}` : ''}
-                    </DialogDescription>
                 </DialogHeader>
                 <BookingRequestForm 
                     artistId={artistId} 
                     artistName={artistProfile?.name || artistProfile?.username}
                     conventionDateId={selectedConventionForBooking?.id}
-                    onSubmitSuccess={() => {
-                        setShowBookingDialog(false);
-                        toast({ title: "Booking Request Sent!", description: "The artist will review your request soon."});
-                    }}
+                    onSubmitSuccess={() => setShowBookingDialog(false)}
                 />
             </div>
         </DialogContent>
