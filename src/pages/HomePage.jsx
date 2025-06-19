@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -6,9 +5,33 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, MapPin, Star, TrendingUp, Clock } from 'lucide-react';
+import { Search, MapPin, Star, TrendingUp, Clock, Newspaper, CheckCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { timeSince, calculateAverageRating } from '@/lib/utils';
+
+const devNews = [
+  {
+    date: 'June 19, 2025',
+    title: 'Chat System & UI Overhaul',
+    description: 'Integrated artist/client info panels into the chat system, added booking history, and fixed various UI bugs related to pop-ups and messaging.',
+  },
+  {
+    date: 'June 18, 2025',
+    title: 'Artist Profile Enhancements',
+    description: 'Added General Availability settings for artists and now display the next upcoming convention date directly on the artist header for better visibility.',
+  },
+  {
+    date: 'June 17, 2025',
+    title: 'Initial UI Polish & Feature Rollout',
+    description: 'Implemented a major UI overhaul, enabling global scrolling, smaller component cards, and added the first version of the Deals and Conventions sections.',
+  }
+];
+
+const whyChooseReasons = [
+  "We build alongside artists to bring the best experience.",
+  "Regular updates, bug fixes, and active development.",
+  "A dedicated platform to connect you with your next masterpiece."
+];
 
 const HomePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -91,7 +114,7 @@ const HomePage = () => {
               className="h-12 text-base"
             />
             <Button type="submit" className="md:col-span-2 ink-gradient h-12 text-lg">
-              <Search className="mr-2 h-5 w-5 text-white" /> Find Artists
+              <Search className="mr-2 h-5 w-5" /> Find Artists
             </Button>
           </form>
         </motion.div>
@@ -117,89 +140,28 @@ const HomePage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="glass-effect rounded-xl p-6 animate-pulse">
-                  <div className="flex items-center mb-4">
-                    <div className="w-16 h-16 bg-muted rounded-full mr-4"></div>
-                    <div>
-                      <div className="h-6 w-32 bg-muted rounded mb-1"></div>
-                      <div className="h-4 w-24 bg-muted rounded"></div>
-                    </div>
-                  </div>
-                  <div className="h-4 w-full bg-muted rounded mb-2"></div>
-                  <div className="h-4 w-3/4 bg-muted rounded mb-4"></div>
-                  <div className="flex justify-between items-center">
-                    <div className="h-5 w-20 bg-muted rounded"></div>
-                    <div className="h-8 w-24 bg-muted rounded-full"></div>
-                  </div>
+                  <div className="flex items-center mb-4"><div className="w-16 h-16 bg-muted rounded-full mr-4"></div><div><div className="h-6 w-32 bg-muted rounded mb-1"></div><div className="h-4 w-24 bg-muted rounded"></div></div></div><div className="h-4 w-full bg-muted rounded mb-2"></div><div className="h-4 w-3/4 bg-muted rounded mb-4"></div><div className="flex justify-between items-center"><div className="h-5 w-20 bg-muted rounded"></div><div className="h-8 w-24 bg-muted rounded-full"></div></div>
                 </div>
               ))}
             </div>
           ) : featuredArtists.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredArtists.map((artist, index) => (
-                <motion.div
-                  key={artist.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 + 0.3 }}
-                  className="h-full"
-                >
+                <motion.div key={artist.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 + 0.3 }} className="h-full">
                   <Link to={`/artist/${artist.username}`} className="block group h-full">
                     <div className="glass-effect rounded-xl overflow-hidden h-full flex flex-col relative">
-                       {artist.location_thumbnail_url && (
-                        <div 
-                          className="absolute inset-0 bg-cover bg-center opacity-15 group-hover:opacity-25 transition-opacity duration-300"
-                          style={{ backgroundImage: `url(${artist.location_thumbnail_url})` }}
-                        ></div>
-                      )}
+                       {artist.location_thumbnail_url && (<div className="absolute inset-0 bg-cover bg-center opacity-15 group-hover:opacity-25 transition-opacity duration-300" style={{ backgroundImage: `url(${artist.location_thumbnail_url})` }}></div>)}
                       <div className="p-5 flex-grow flex flex-col z-10 bg-card/50 group-hover:bg-card/30 transition-colors duration-300">
                         <div className="flex items-center mb-3">
-                          <Avatar className="w-16 h-16 mr-4 border-2 border-primary/50">
-                            <AvatarImage src={artist.profile_photo_url} alt={artist.name} />
-                            <AvatarFallback className="ink-gradient text-primary-foreground">
-                              {artist.name?.charAt(0)?.toUpperCase() || 'A'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h3 className="text-xl font-semibold group-hover:text-primary transition-colors">{artist.name}</h3>
-                            <p className="text-sm text-muted-foreground">@{artist.username}</p>
-                          </div>
+                          <Avatar className="w-16 h-16 mr-4 border-2 border-primary/50"><AvatarImage src={artist.profile_photo_url} alt={artist.name} /><AvatarFallback className="ink-gradient text-primary-foreground">{artist.name?.charAt(0)?.toUpperCase() || 'A'}</AvatarFallback></Avatar>
+                          <div><h3 className="text-xl font-semibold group-hover:text-primary transition-colors">{artist.name}</h3><p className="text-sm text-muted-foreground">@{artist.username}</p></div>
                         </div>
-                        {artist.location && (
-                          <div className="flex items-center text-sm text-muted-foreground mb-1">
-                            <MapPin className="w-4 h-4 mr-2 text-foreground" />
-                            <span>{artist.location}</span>
-                          </div>
-                        )}
+                        {artist.location && <div className="flex items-center text-sm text-muted-foreground mb-1"><MapPin className="w-4 h-4 mr-2 text-foreground" /><span>{artist.location}</span></div>}
                         <p className="text-sm text-foreground/90 line-clamp-2 mb-3 flex-grow">{artist.bio || "No bio available."}</p>
-                        
-                        {artist.styles && artist.styles.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-3">
-                            {artist.styles.slice(0, 3).map(style => (
-                              <span key={style} className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded-full">
-                                {style}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        
+                        {artist.styles?.length > 0 && <div className="flex flex-wrap gap-1 mb-3">{artist.styles.slice(0, 3).map(style => <span key={style} className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded-full">{style}</span>)}</div>}
                         <div className="mt-auto border-t border-border/30 pt-3">
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center">
-                              <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
-                              <span>{artist.average_rating > 0 ? artist.average_rating : 'N/A'} ({artist.review_count} reviews)</span>
-                            </div>
-                            {artist.booking_status ? (
-                              <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded-full">Available</span>
-                            ) : (
-                              <span className="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded-full">Booked</span>
-                            )}
-                          </div>
-                           {timeSince(artist.last_active) && (
-                            <div className="flex items-center text-xs text-muted-foreground mt-2">
-                              <Clock className="w-3 h-3 mr-1.5 text-foreground" />
-                              Active: {timeSince(artist.last_active)}
-                            </div>
-                          )}
+                          <div className="flex items-center justify-between text-sm"><div className="flex items-center"><Star className="w-4 h-4 text-yellow-400 fill-current mr-1" /><span>{artist.average_rating > 0 ? artist.average_rating : 'N/A'} ({artist.review_count} reviews)</span></div>{artist.booking_status ? <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded-full">Available</span> : <span className="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded-full">Booked</span>}</div>
+                           {timeSince(artist.last_active) && <div className="flex items-center text-xs text-muted-foreground mt-2"><Clock className="w-3 h-3 mr-1.5 text-foreground" />Active: {timeSince(artist.last_active)}</div>}
                         </div>
                       </div>
                     </div>
@@ -207,9 +169,48 @@ const HomePage = () => {
                 </motion.div>
               ))}
             </div>
-          ) : (
-            <p className="text-center text-muted-foreground">No featured artists available at the moment.</p>
-          )}
+          ) : (<p className="text-center text-muted-foreground">No featured artists available at the moment.</p>)}
+        </div>
+      </section>
+
+      {/* Development News Section */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="glass-effect rounded-2xl p-8"
+            >
+                <h2 className="text-2xl font-bold text-center mb-8 ink-text-gradient">Developer Zone</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    {/* News Column */}
+                    <div>
+                        <h3 className="text-xl font-semibold mb-4 flex items-center"><Newspaper className="w-5 h-5 mr-2 text-primary" /> Dev News & Updates</h3>
+                        <div className="space-y-4">
+                            {devNews.map((item, index) => (
+                                <div key={index} className="border-l-2 border-primary pl-4">
+                                    <p className="text-xs text-muted-foreground">{item.date}</p>
+                                    <p className="font-semibold">{item.title}</p>
+                                    <p className="text-sm text-foreground/80">{item.description}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    {/* Why Choose Column */}
+                    <div>
+                        <h3 className="text-xl font-semibold mb-4">Why Choose InkSnap?</h3>
+                         <ul className="space-y-3">
+                            {whyChooseReasons.map((reason, index) => (
+                                <li key={index} className="flex items-start">
+                                    <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-green-400 flex-shrink-0" />
+                                    <span>{reason}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            </motion.div>
         </div>
       </section>
     </div>
