@@ -35,7 +35,6 @@ const ArtistProfile = () => {
   const portfolioRef = useRef(null);
 
   const fetchArtistData = useCallback(async () => {
-    // ... (fetchArtistData logic is correct and remains the same)
     setPageLoading(true);
     setArtist(null); 
     setReviews([]);
@@ -118,8 +117,7 @@ const ArtistProfile = () => {
   }, [fetchArtistData, authLoading, contextProfileLoading]);
 
   const handleFollow = async () => {
-    // ... (handleFollow logic is correct and remains the same)
-     if (!user) {
+    if (!user) {
       toast({ title: "Please sign in", description: "You need to be logged in to follow artists.", variant: "destructive" });
       return;
     }
@@ -137,8 +135,7 @@ const ArtistProfile = () => {
   };
   
   const handleReviewAdded = async (reviewData) => {
-    // ... (handleReviewAdded logic is correct and remains the same)
-     if (!user || !artist) return;
+    if (!user || !artist) return;
     try {
         const { data: newReview } = await supabase.from('reviews').insert({ artist_id: artist.id, reviewer_id: user.id, ...reviewData }).select('*, reviewer:profiles!reviews_reviewer_id_fkey(*)').single();
         if (newReview) setReviews(prev => [newReview, ...prev]);
@@ -157,8 +154,7 @@ const ArtistProfile = () => {
     if (user.id === artist?.id) return;
     setShowBookingDialog(true);
   };
-
-  // ***** FIX: Robust message handling *****
+  
   const handleMessageArtist = async () => {
     if (!user) {
       toast({ title: "Please sign in", description: "You must be logged in to message artists.", variant: "destructive" });
@@ -175,30 +171,34 @@ const ArtistProfile = () => {
     }
 
     try {
-      const orFilter = `and(user1_id.eq.${user.id},user2_id.eq.${artist.id}),and(user1_id.eq.${artist.id},user2_id.eq.${user.id})`;
-      const { data: existing, error: fetchError } = await supabase
-        .from('conversations')
-        .select('id')
-        .or(orFilter)
-        .maybeSingle();
+      const { data: conversationData, error: rpcError } = await supabase
+        .rpc('start_or_get_conversation', { p_user1_id: user.id, p_user2_id: artist.id })
+        .single();
       
-      if (fetchError) throw fetchError;
+      if (rpcError) {
+        // This logic handles the specific race condition where the conversation is created
+        // by the other user at the exact same time, violating the unique constraint.
+        if (rpcError.message.includes('violates check constraint')) {
+          console.warn("Race condition detected when creating conversation. Re-fetching...");
+          const orFilter = `and(user1_id.eq.${user.id},user2_id.eq.${artist.id}),and(user1_id.eq.${artist.id},user2_id.eq.${user.id})`;
+          const { data: existingConv } = await supabase.from('conversations').select('id').or(orFilter).maybeSingle();
 
-      if (existing) {
-        navigate(`/chat?conversationId=${existing.id}`);
+          if (existingConv?.id) {
+            navigate(`/chat?conversationId=${existingConv.id}`);
+            return;
+          }
+        } 
+        // If it's a different error, throw it to be caught below.
+        throw rpcError;
+      }
+
+      if (conversationData && conversationData.conversation_id) {
+        navigate(`/chat?conversationId=${conversationData.conversation_id}`);
       } else {
-        const { data: newConversation, error: createError } = await supabase
-          .from('conversations')
-          .insert({ user1_id: user.id, user2_id: artist.id })
-          .select('id')
-          .single();
-        
-        if (createError) throw createError;
-        
-        navigate(`/chat?conversationId=${newConversation.id}`);
+        toast({ title: "Error", description: "Could not start or find conversation.", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error Starting Chat", description: `Could not start or find conversation: ${error.message}`, variant: "destructive" });
+      toast({ title: "Error Starting Chat", description: `An unexpected error occurred: ${error.message}`, variant: "destructive" });
     }
   };
 
@@ -254,7 +254,6 @@ const ArtistProfile = () => {
 
       <ImageDialog selectedImage={selectedImage} artist={artist} onOpenChange={(isOpen) => !isOpen && setSelectedImage(null)} />
       
-      {/* ***** FIX: Simplified and scrollable Dialog ***** */}
       <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
         <DialogContent className="glass-effect sm:max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar">
             <DialogHeader>
