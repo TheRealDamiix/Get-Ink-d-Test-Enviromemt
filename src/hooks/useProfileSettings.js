@@ -31,7 +31,7 @@ export const useProfileSettings = () => {
         styles: profileSource.styles || [],
         currentStyle: '',
         bookingStatus: profileSource.booking_status ?? true,
-        bookedUntil: profileSource.booked_until || '',
+        bookedUntil: profileSource.booked_until ? new Date(profileSource.booked_until).toISOString().split('T')[0] : '',
         bookingLink: profileSource.booking_link || '',
         profilePhotoUrl: profileSource.profile_photo_url || '',
         currentLatitude: profileSource.latitude || null,
@@ -47,8 +47,7 @@ export const useProfileSettings = () => {
   useEffect(() => {
     if (user) resetForm();
   }, [user, resetForm]);
-  
-  // ***** FIX: Created specific handlers to be returned from the hook *****
+
   const handleProfilePhotoChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -67,18 +66,15 @@ export const useProfileSettings = () => {
     }
   };
 
-  // ... (uploadImageToCloudinary and other functions remain the same) ...
-  const uploadImageToCloudinary = async (file, folderName, publicIdNamePrefix = 'image') => {
+  const uploadImageToCloudinary = async (file, folderName) => {
     if (!file || !user) return null;
     setIsUploading(true);
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
-      if (folderName) uploadFormData.append('folder', folderName);
-      if (publicIdNamePrefix) uploadFormData.append('public_id_name', `${publicIdNamePrefix}_${user.id}_${Date.now()}`);
-
-      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-cloudinary', { body: uploadFormData, });
-      if (uploadError || uploadData.error || !uploadData.secure_url) throw new Error(uploadError?.message || uploadData?.error || `Failed to upload ${folderName} image.`);
+      uploadFormData.append('folder', folderName);
+      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-cloudinary', { body: uploadFormData });
+      if (uploadError || uploadData.error) throw new Error(uploadError?.message || uploadData?.error || `Failed to upload ${folderName} image.`);
       return { url: uploadData.secure_url, publicId: uploadData.public_id };
     } catch (error) {
       toast({ title: "Upload Error", description: error.message, variant: "destructive" });
@@ -90,22 +86,36 @@ export const useProfileSettings = () => {
     e.preventDefault();
     if (!user) return;
     setIsSaving(true);
+    
     let finalPhotoUrl = formData.profilePhotoUrl;
     let finalLocationThumbnailUrl = formData.locationThumbnailUrl;
 
-    if (profilePhotoFile) {
-        const uploaded = await uploadImageToCloudinary(profilePhotoFile, 'profile_photos', 'profile');
-        if (uploaded) finalPhotoUrl = uploaded.url; else { setIsSaving(false); return; }
-    }
-    if (locationThumbnailFile) {
-        const uploaded = await uploadImageToCloudinary(locationThumbnailFile, 'location_thumbnails', 'location_thumb');
-        if (uploaded) finalLocationThumbnailUrl = uploaded.url; else { setIsSaving(false); return; }
-    }
-
-    const updates = { ...formData, profilePhotoUrl: finalPhotoUrl, locationThumbnailUrl: finalLocationThumbnailUrl };
-    delete updates.currentStyle; // Don't save this temporary field
-
     try {
+        if (profilePhotoFile) {
+            const uploaded = await uploadImageToCloudinary(profilePhotoFile, 'profile_photos');
+            if (uploaded) finalPhotoUrl = uploaded.url; else throw new Error("Profile photo upload failed.");
+        }
+        if (locationThumbnailFile) {
+            const uploaded = await uploadImageToCloudinary(locationThumbnailFile, 'location_thumbnails');
+            if (uploaded) finalLocationThumbnailUrl = uploaded.url; else throw new Error("Location thumbnail upload failed.");
+        }
+
+        // ***** FIX: Manually map state keys (camelCase) to DB columns (snake_case) *****
+        const updates = {
+            name: formData.name,
+            username: formData.username,
+            bio: formData.bio,
+            location: formData.location,
+            studio_name: formData.studio_name,
+            styles: formData.styles,
+            booking_status: formData.bookingStatus,
+            booked_until: formData.bookingStatus ? null : (formData.bookedUntil || null),
+            booking_link: formData.bookingLink,
+            profile_photo_url: finalPhotoUrl,
+            location_thumbnail_url: finalLocationThumbnailUrl,
+            last_active: new Date().toISOString(),
+        };
+
         const { error } = await updateUserContextAndDB(updates);
         if (error) throw error;
         toast({ title: "Profile Updated", description: "Your profile has been successfully updated." });
@@ -113,12 +123,14 @@ export const useProfileSettings = () => {
         toast({ title: "Update Error", description: error.message, variant: "destructive" });
     } finally {
         setIsSaving(false);
+        setProfilePhotoFile(null);
+        setLocationThumbnailFile(null);
     }
   };
 
   return {
     formData, setFormData,
-    handleProfilePhotoChange, handleLocationThumbnailChange, // Return specific handlers
+    handleProfilePhotoChange, handleLocationThumbnailChange,
     handleProfileUpdate, resetForm,
     isUploading, isSaving, isGeocoding,
     isLoading: authLoading || contextProfileLoading,
