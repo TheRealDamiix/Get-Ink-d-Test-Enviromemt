@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -6,9 +5,11 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Newspaper, Heart, MessageSquare, Image as ImageIcon, UserCircle, Clock, Edit3 } from 'lucide-react';
+import { Loader2, Newspaper, Heart, MessageSquare, Image as ImageIcon, UserCircle, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import UserPostsManager from '@/components/dashboard/profile_settings/ArtistPostsManager'; 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+
 
 const PostCard = ({ post, onLike, onComment }) => {
   const { user } = useAuth();
@@ -75,13 +76,13 @@ const PostCard = ({ post, onLike, onComment }) => {
       
       <div className="px-5 py-3 border-t border-border/50 flex items-center justify-between">
         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" onClick={() => handleNotImplemented('Like')}>
-          <Heart className="w-4 h-4 mr-2 text-foreground" /> Like
+          <Heart className="w-4 h-4 mr-2" /> Like
         </Button>
         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" onClick={() => handleNotImplemented('Comment')}>
-          <MessageSquare className="w-4 h-4 mr-2 text-foreground" /> Comment
+          <MessageSquare className="w-4 h-4 mr-2" /> Comment
         </Button>
         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" onClick={() => handleNotImplemented('Share')}>
-          <UserCircle className="w-4 h-4 mr-2 text-foreground" /> Share
+          <UserCircle className="w-4 h-4 mr-2" /> Share
         </Button>
       </div>
     </motion.div>
@@ -108,11 +109,7 @@ const NewsFeedPage = () => {
       .select(`
         *,
         poster:profiles!posts_user_id_fkey (
-          id, 
-          username, 
-          name, 
-          profile_photo_url,
-          is_artist
+          id, username, name, profile_photo_url, is_artist
         )
       `)
       .order('created_at', { ascending: false })
@@ -205,19 +202,24 @@ const NewsFeedPage = () => {
                 What's on your mind, {user.name || user.username}?
               </Button>
               <Button className="ink-gradient" onClick={() => setShowCreatePostDialog(true)}>
-                <Edit3 className="w-4 h-4 mr-2 sm:mr-0 text-white" /><span className="hidden sm:inline ml-2">Create Post</span>
+                <Edit3 className="w-4 h-4 mr-2 sm:mr-0" /><span className="hidden sm:inline ml-2">Create Post</span>
               </Button>
             </div>
           </motion.div>
         )}
         
-        {showCreatePostDialog && user && (
-           <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-             <div className="w-full max-w-lg">
-                <UserPostsManager user={user} onPostCreatedOrUpdated={handlePostCreatedOrUpdated} />
-                <Button variant="ghost" onClick={() => setShowCreatePostDialog(false)} className="mt-2 w-full">Cancel</Button>
-             </div>
-           </div>
+        {/* ***** FIX: Replaced custom modal with proper Dialog component ***** */}
+        {user && (
+            <Dialog open={showCreatePostDialog} onOpenChange={setShowCreatePostDialog}>
+                <DialogContent className="glass-effect sm:max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+                     <DialogHeader>
+                        <DialogTitle>Manage Your Posts</DialogTitle>
+                        <DialogDescription>Create new posts or edit existing ones.</DialogDescription>
+                    </DialogHeader>
+                    {/* The UserPostsManager component already contains the full UI for managing posts */}
+                    <UserPostsManager user={user} onPostCreatedOrUpdated={handlePostCreatedOrUpdated} />
+                </DialogContent>
+            </Dialog>
         )}
 
 
