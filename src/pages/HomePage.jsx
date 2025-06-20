@@ -9,7 +9,13 @@ import { Search, MapPin, Star, TrendingUp, Clock, Newspaper, CheckCircle } from 
 import { useToast } from '@/components/ui/use-toast';
 import { timeSince, calculateAverageRating } from '@/lib/utils';
 
+// ***** FIX: Updated Dev Log *****
 const devNews = [
+  {
+    date: 'June 20, 2025',
+    title: 'Database & Chat Reliability Update',
+    description: 'Fixed critical database schema errors by implementing a full schema reset. Corrected chat initiation logic to prevent race conditions and fixed dialog layering issues on the News Feed.',
+  },
   {
     date: 'June 19, 2025',
     title: 'Chat System & UI Overhaul',
@@ -30,7 +36,7 @@ const devNews = [
 const whyChooseReasons = [
   "We build alongside artists to bring the best experience.",
   "Regular updates, bug fixes, and active development.",
-  "A dedicated platform to connect you with your next masterpiece."
+  "A dedicated platform to connect you with your next masterpiece, commission-free."
 ];
 
 const HomePage = () => {
@@ -173,7 +179,6 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Development News Section */}
       <section className="py-16">
         <div className="container mx-auto px-4">
             <motion.div 
@@ -184,7 +189,6 @@ const HomePage = () => {
             >
                 <h2 className="text-2xl font-bold text-center mb-8 ink-text-gradient">Developer Zone</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    {/* News Column */}
                     <div>
                         <h3 className="text-xl font-semibold mb-4 flex items-center"><Newspaper className="w-5 h-5 mr-2 text-primary" /> Dev News & Updates</h3>
                         <div className="space-y-4">
@@ -197,7 +201,6 @@ const HomePage = () => {
                             ))}
                         </div>
                     </div>
-                    {/* Why Choose Column */}
                     <div>
                         <h3 className="text-xl font-semibold mb-4">Why Choose InkSnap?</h3>
                          <ul className="space-y-3">
