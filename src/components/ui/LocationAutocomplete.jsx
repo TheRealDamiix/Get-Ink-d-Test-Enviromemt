@@ -49,10 +49,8 @@ const LocationAutocomplete = ({
     setIsLoading(true);
     try {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query.trim())}&format=json&limit=7&addressdetails=1`;
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'InkSnap/1.0 (tattoo artist booking platform)' },
-        signal: abortRef.current.signal,
-      });
+      // Note: browsers forbid setting User-Agent — omit it; the browser sends its own automatically
+      const res = await fetch(url, { signal: abortRef.current.signal });
       const data = await res.json();
 
       const formatted = data
