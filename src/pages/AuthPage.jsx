@@ -9,8 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { User, Mail, Lock, MapPin } from 'lucide-react';
+import { User, Mail, Lock } from 'lucide-react';
 import InkSnapLogo from '@/components/InkSnapLogo';
+import LocationAutocomplete from '@/components/ui/LocationAutocomplete';
 
 const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -209,12 +210,13 @@ const AuthPage = () => {
 
                   <div className="space-y-1.5">
                     <Label htmlFor="signup-location" className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Location</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
-                      <Input id="signup-location" type="text" placeholder="City, State"
-                        value={signupForm.location} onChange={(e) => setSignupForm({...signupForm, location: e.target.value})}
-                        className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" />
-                    </div>
+                    <LocationAutocomplete
+                      id="signup-location"
+                      value={signupForm.location}
+                      onChange={(val) => setSignupForm({ ...signupForm, location: val })}
+                      placeholder="City, State"
+                      inputClassName="bg-white/5 border-white/10 focus:border-primary/50"
+                    />
                   </div>
 
                   <div className="flex items-center space-x-2 py-1 px-3 rounded-lg bg-primary/5 border border-primary/15">

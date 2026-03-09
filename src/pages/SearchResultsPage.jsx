@@ -5,11 +5,11 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star, MapPin, Search, Frown, Loader2, Clock, SlidersHorizontal } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { timeSince, calculateAverageRating } from '@/lib/utils';
+import LocationAutocomplete from '@/components/ui/LocationAutocomplete';
 
 const SearchResultsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -112,12 +112,19 @@ const SearchResultsPage = () => {
                   className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-10 px-0 text-sm placeholder:text-muted-foreground/40" />
               </div>
               <div className="hidden md:block w-px bg-primary/10 my-2" />
-              <div className="flex items-center flex-1 gap-2 px-4 py-1">
-                <MapPin className="w-4 h-4 text-primary/50 shrink-0" />
-                <Input id="search-location" type="text" value={locationTerm}
-                  onChange={(e) => setLocationTerm(e.target.value)}
+              <div className="flex items-center flex-1 px-2 py-1">
+                <LocationAutocomplete
+                  id="search-location"
+                  value={locationTerm}
+                  onChange={setLocationTerm}
+                  onSelect={(suggestion) => {
+                    setLocationTerm(suggestion.display);
+                    setSearchParams({ query: searchTerm, location: suggestion.display });
+                  }}
                   placeholder="City, State, or Zip..."
-                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-10 px-0 text-sm placeholder:text-muted-foreground/40" />
+                  className="flex-1"
+                  inputClassName="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-10 text-sm placeholder:text-muted-foreground/40"
+                />
               </div>
               <Button type="submit" className="ink-gradient h-11 px-7 rounded-xl m-0.5 font-semibold shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow shrink-0" disabled={isLoading}>
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Search className="w-4 h-4 mr-2" />Search</>}
