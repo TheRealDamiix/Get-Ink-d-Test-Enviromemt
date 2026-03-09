@@ -1,0 +1,2 @@
+- name: Delete Multiple Files
+  uses: mdmush/remove-files@v1.0.1
