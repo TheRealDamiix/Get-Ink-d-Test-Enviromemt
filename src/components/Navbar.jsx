@@ -48,14 +48,14 @@ const Navbar = () => {
     <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      className="sticky top-0 z-50 glass-effect border-b border-border/50"
+      className="sticky top-0 z-50 glass-effect border-b border-primary/10 shadow-[0_1px_12px_rgba(229,62,62,0.08)]"
     >
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 shrink-0">
             <InkSnapLogo className="w-9 h-9" />
-            <span className="text-xl font-bold ink-text-gradient hidden sm:block">InkSnap</span>
+            <span className="text-xl font-bold tracking-wide ink-text-gradient hidden sm:block">InkSnap</span>
           </Link>
 
           {/* Desktop nav links */}
@@ -115,10 +115,7 @@ const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <>
-                <Button variant="ghost" asChild size="sm" className="hidden sm:inline-flex"><Link to="/feed">Feed</Link></Button>
-                <Button asChild className="ink-gradient hover:opacity-90"><Link to="/auth">Sign In</Link></Button>
-              </>
+              <Button asChild className="ink-gradient hover:opacity-90 shadow-md shadow-primary/20"><Link to="/auth">Sign In</Link></Button>
             )}
           </div>
         </div>

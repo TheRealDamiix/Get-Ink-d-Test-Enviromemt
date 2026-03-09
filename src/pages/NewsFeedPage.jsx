@@ -44,45 +44,49 @@ const PostCard = ({ post }) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-effect rounded-xl overflow-hidden shadow-lg border border-border/50"
+      className="rounded-2xl overflow-hidden border border-border/40 hover:border-primary/20 transition-all duration-300 hover:shadow-[0_0_20px_rgba(229,62,62,0.08)]"
+      style={{ background: 'rgba(22,22,22,0.7)', backdropFilter: 'blur(12px)' }}
     >
       <div className="p-5">
-        <div className="flex items-center mb-4">
-          <Link to={profileLink} className="flex items-center">
-            <Avatar className="w-11 h-11 mr-3 border-2 border-primary/40">
-              <AvatarImage src={post.poster_profile_photo_url} alt={post.poster_name} />
-              <AvatarFallback className="ink-gradient text-primary-foreground">
-                {post.poster_name?.charAt(0)?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">{post.poster_name || post.poster_username}</h3>
-              <p className="text-xs text-muted-foreground">@{post.poster_username} &bull; {timeSince(post.created_at)}</p>
-            </div>
-          </Link>
-        </div>
+        {/* Author row */}
+        <Link to={profileLink} className="flex items-center gap-3 mb-4 group/author">
+          <Avatar className="w-10 h-10 border-2 border-primary/30 group-hover/author:border-primary/60 transition-colors shrink-0">
+            <AvatarImage src={post.poster_profile_photo_url} alt={post.poster_name} />
+            <AvatarFallback className="ink-gradient text-primary-foreground font-bold text-sm">
+              {post.poster_name?.charAt(0)?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-sm leading-tight group-hover/author:text-primary transition-colors truncate">
+              {post.poster_name || post.poster_username}
+              {post.poster_is_artist && <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary/70 border border-primary/30 rounded px-1 py-0.5">Artist</span>}
+            </h3>
+            <p className="text-xs text-muted-foreground">@{post.poster_username} · {timeSince(post.created_at)}</p>
+          </div>
+        </Link>
 
-        {post.title && <h4 className="text-lg font-semibold text-foreground/95 mb-2">{post.title}</h4>}
-        {post.content && <p className="text-sm text-foreground/90 mb-4 whitespace-pre-wrap">{post.content}</p>}
+        {post.title && <h4 className="text-base font-bold text-foreground mb-2 leading-snug">{post.title}</h4>}
+        {post.content && <p className="text-sm text-foreground/75 mb-4 whitespace-pre-wrap leading-relaxed">{post.content}</p>}
 
         {post.image_url && (
-          <div className="mb-4 rounded-lg overflow-hidden max-h-[500px]">
+          <div className="mb-2 -mx-1 rounded-xl overflow-hidden border border-border/30 max-h-[480px] bg-black/20">
             <img src={post.image_url} alt="Post image" className="w-full h-full object-contain" />
           </div>
         )}
       </div>
 
-      <div className="px-5 py-3 border-t border-border/50 flex items-center justify-between">
-        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" onClick={() => handleNotImplemented('Like')}>
-          <Heart className="w-4 h-4 mr-2" /> Like
+      {/* Action bar */}
+      <div className="px-5 py-2.5 border-t border-border/20 flex items-center gap-1">
+        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/8 gap-1.5 text-xs" onClick={() => handleNotImplemented('Like')}>
+          <Heart className="w-3.5 h-3.5" /> Like
         </Button>
-        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" onClick={() => handleNotImplemented('Comment')}>
-          <MessageSquare className="w-4 h-4 mr-2" /> Comment
+        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/8 gap-1.5 text-xs" onClick={() => handleNotImplemented('Comment')}>
+          <MessageSquare className="w-3.5 h-3.5" /> Comment
         </Button>
-        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" onClick={() => handleNotImplemented('Share')}>
-          <UserCircle className="w-4 h-4 mr-2" /> Share
+        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/8 gap-1.5 text-xs ml-auto" onClick={() => handleNotImplemented('Share')}>
+          <UserCircle className="w-3.5 h-3.5" /> Share
         </Button>
       </div>
     </motion.div>
@@ -163,45 +167,39 @@ const NewsFeedPage = () => {
   };
 
   return (
-    <div className="min-h-screen py-8 px-4 bg-gradient-to-br from-background to-card/5">
+    <div className="min-h-screen py-8 px-4">
       <div className="container mx-auto max-w-2xl">
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-10"
+          className="text-center mb-8"
         >
-          <div className="flex items-center justify-center mb-3">
-            <Newspaper className="w-10 h-10 mr-3 text-primary" />
-            <h1 className="text-4xl font-bold ink-text-gradient">News Feed</h1>
-          </div>
-          <p className="text-muted-foreground">
-            Catch up on the latest posts, deals, and inspirations from the community.
+          <p className="text-xs font-semibold tracking-widest uppercase text-primary mb-1">Community</p>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight ink-text-gradient">News Feed</h1>
+          <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
+            Latest posts, deals, and inspiration from the InkSnap community.
           </p>
         </motion.div>
 
         {user && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mb-8 p-4 glass-effect rounded-xl"
+            className="mb-6 p-4 rounded-2xl border border-primary/15 hover:border-primary/25 transition-colors cursor-pointer"
+            style={{ background: 'rgba(22,22,22,0.7)', backdropFilter: 'blur(12px)' }}
+            onClick={() => setShowCreatePostDialog(true)}
           >
             <div className="flex items-center gap-3">
-              <Avatar>
+              <Avatar className="border-2 border-primary/30 shrink-0">
                 <AvatarImage src={user.profile_photo_url || user.profile?.profile_photo_url} alt={user.name || user.username} />
-                <AvatarFallback className="ink-gradient text-primary-foreground">
+                <AvatarFallback className="ink-gradient text-primary-foreground font-bold">
                   {(user.name || user.username || 'U').charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <Button
-                variant="outline"
-                className="flex-1 justify-start text-muted-foreground hover:text-foreground"
-                onClick={() => setShowCreatePostDialog(true)}
-              >
-                What's on your mind, {user.name || user.username}?
-              </Button>
-              <Button className="ink-gradient" onClick={() => setShowCreatePostDialog(true)}>
-                <Edit3 className="w-4 h-4 mr-2 sm:mr-0" /><span className="hidden sm:inline ml-2">Create Post</span>
+              <span className="flex-1 text-sm text-muted-foreground/60">Share something with the community...</span>
+              <Button className="ink-gradient shrink-0 shadow-md shadow-primary/20" size="sm" onClick={(e) => { e.stopPropagation(); setShowCreatePostDialog(true); }}>
+                <Edit3 className="w-3.5 h-3.5 mr-1.5" /> Post
               </Button>
             </div>
           </motion.div>
@@ -227,12 +225,15 @@ const NewsFeedPage = () => {
         )}
 
         {!isLoading && posts.length === 0 && (
-          <div className="text-center py-12 glass-effect rounded-xl p-8">
-            <ImageIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-2xl font-semibold mb-2">The Canvas is Clean!</h2>
-            <p className="text-muted-foreground mb-6">No posts to show right now. Be the first to share something!</p>
+          <div className="text-center py-16 rounded-2xl border border-border/30 p-8"
+               style={{ background: 'rgba(22,22,22,0.6)', backdropFilter: 'blur(10px)' }}>
+            <div className="w-14 h-14 mx-auto mb-4 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center">
+              <ImageIcon className="w-7 h-7 text-primary/50" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">The Canvas is Clean</h2>
+            <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">No posts yet. Be the first to share your work with the community!</p>
             {!user &&
-              <Button asChild className="ink-gradient">
+              <Button asChild className="ink-gradient shadow-lg shadow-primary/20">
                 <Link to="/auth">Sign In to Post</Link>
               </Button>
             }
@@ -240,7 +241,7 @@ const NewsFeedPage = () => {
         )}
 
         {posts.length > 0 && (
-          <div className="space-y-8">
+          <div className="space-y-4">
             {posts.map(post => <PostCard key={post.id} post={post} />)}
           </div>
         )}

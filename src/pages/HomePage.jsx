@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, MapPin, Star, TrendingUp, Clock, Newspaper, CheckCircle, Zap } from 'lucide-react';
+import { Search, MapPin, Star, TrendingUp, Clock, Newspaper, CheckCircle, Zap, ArrowRight, Users } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { timeSince, calculateAverageRating } from '@/lib/utils';
 import InkSnapLogo from '@/components/InkSnapLogo';
@@ -46,7 +46,7 @@ const devNews = [
 const whyChooseReasons = [
   "We build alongside artists to bring the best experience.",
   "Regular updates, bug fixes, and active development.",
-  "A dedicated platform to connect you with your next masterpiece, commission-free."
+  "A dedicated platform to connect clients directly with the artists behind their vision."
 ];
 
 const HomePage = () => {
@@ -94,133 +94,188 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen">
-      <header className="relative py-20 md:py-32 text-center overflow-hidden">
-        {/* Background elements */}
-        <div className="absolute inset-0 ink-gradient opacity-10 pointer-events-none"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/40 to-background pointer-events-none z-0"></div>
-        {/* Decorative blobs */}
-        <div className="absolute top-10 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute bottom-10 right-1/4 w-48 h-48 bg-primary/8 rounded-full blur-2xl pointer-events-none"></div>
+      {/* ── HERO ── */}
+      <header className="relative py-24 md:py-36 text-center overflow-hidden">
+        <div className="absolute inset-0 ink-gradient opacity-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/50 to-background pointer-events-none z-0" />
+        {/* Glow orbs */}
+        <div className="absolute -top-10 left-1/3 w-80 h-80 bg-primary/12 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-1/4 w-56 h-56 bg-primary/8 rounded-full blur-2xl pointer-events-none" />
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.7 }}
           className="container mx-auto px-4 relative z-10"
         >
-          {/* Logo badge */}
+          {/* Logo mark */}
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.75, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="w-24 h-24 mx-auto mb-6 ink-gradient rounded-3xl flex items-center justify-center shadow-2xl shadow-primary/30"
+            transition={{ duration: 0.5, delay: 0.05 }}
+            className="w-20 h-20 mx-auto mb-8 ink-gradient rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/40"
           >
-            <InkSnapLogo className="w-16 h-16" />
+            <InkSnapLogo className="w-14 h-14" />
           </motion.div>
 
+          {/* Eyebrow badge */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6"
+            transition={{ delay: 0.15 }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-semibold tracking-widest uppercase mb-8"
           >
-            <Zap className="w-3.5 h-3.5" /> Find your next ink, commission-free
+            <Zap className="w-3 h-3" /> Tattoo Artist Discovery Platform
           </motion.div>
 
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            Discover Your Next<br />
-            <span className="ink-text-gradient">Masterpiece</span>
+          {/* Main heading */}
+          <h1 className="text-5xl sm:text-6xl md:text-8xl font-extrabold tracking-tight leading-none mb-6">
+            Your Vision.<br />
+            <span className="ink-text-gradient">Their Art.</span>
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-            Connect with talented tattoo artists, explore stunning portfolios, and book your next ink session with InkSnap.
+          <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-12">
+            Browse portfolios from talented tattoo artists, find your style, and book your next session — all in one place.
           </p>
 
           {/* Search bar */}
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-10">
-            <div className="flex flex-col md:flex-row gap-3 p-2 glass-effect rounded-2xl border border-border/60 shadow-xl shadow-black/30">
-              <div className="flex items-center flex-1 gap-2 px-3">
-                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div className="flex flex-col md:flex-row gap-0 md:gap-0 p-1.5 glass-effect rounded-2xl border border-primary/15 shadow-2xl shadow-black/40">
+              <div className="flex items-center flex-1 gap-2 px-4 py-1">
+                <Search className="w-4 h-4 text-primary/60 shrink-0" />
                 <Input
                   type="text"
                   placeholder="Style, artist, or keyword..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-10 px-0 text-base"
+                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-10 px-0 text-sm placeholder:text-muted-foreground/50"
                 />
               </div>
-              <div className="hidden md:block w-px bg-border/50 my-1"></div>
-              <div className="flex items-center flex-1 gap-2 px-3">
-                <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="hidden md:block w-px bg-primary/10 my-2" />
+              <div className="flex items-center flex-1 gap-2 px-4 py-1">
+                <MapPin className="w-4 h-4 text-primary/60 shrink-0" />
                 <Input
                   type="text"
                   placeholder="City, State..."
                   value={locationTerm}
                   onChange={(e) => setLocationTerm(e.target.value)}
-                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-10 px-0 text-base"
+                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-10 px-0 text-sm placeholder:text-muted-foreground/50"
                 />
               </div>
-              <Button type="submit" className="ink-gradient h-10 px-6 rounded-xl shrink-0">
+              <Button type="submit" className="ink-gradient h-11 px-7 rounded-xl m-0.5 shrink-0 font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-shadow">
                 Search
               </Button>
             </div>
           </form>
 
-          {/* Quick stats */}
+          {/* Trust signals */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="flex items-center justify-center gap-8 text-sm text-muted-foreground"
+            transition={{ delay: 0.4 }}
+            className="flex items-center justify-center gap-6 md:gap-10 text-xs text-muted-foreground/60"
           >
-            <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-yellow-400 fill-current" /> Top-rated artists</span>
-            <span className="hidden sm:flex items-center gap-1.5"><MapPin className="w-4 h-4 text-primary" /> Locations nationwide</span>
-            <span className="flex items-center gap-1.5"><Zap className="w-4 h-4 text-primary" /> Commission-free</span>
+            <span className="flex items-center gap-1.5"><Star className="w-3.5 h-3.5 text-yellow-400 fill-current" /> Top-rated artists</span>
+            <span className="w-px h-4 bg-border/50" />
+            <span className="hidden sm:flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-primary/70" /> Nationwide</span>
+            <span className="hidden sm:block w-px h-4 bg-border/50" />
+            <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-primary/70" /> Growing community</span>
           </motion.div>
         </motion.div>
       </header>
 
+      {/* ── FEATURED ARTISTS ── */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-center mb-12"
+            className="flex items-end justify-between mb-10"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 flex items-center justify-center">
-              <TrendingUp className="w-8 h-8 mr-3 text-primary" /> Featured Artists
-            </h2>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              Check out some of the most active and highly-rated artists on InkSnap.
-            </p>
+            <div>
+              <p className="text-xs font-semibold tracking-widest uppercase text-primary mb-1">Discover</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">Featured Artists</h2>
+            </div>
+            <Link to="/search" className="hidden sm:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors">
+              Browse all <ArrowRight className="w-4 h-4" />
+            </Link>
           </motion.div>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="glass-effect rounded-xl p-6 animate-pulse">
-                  <div className="flex items-center mb-4"><div className="w-16 h-16 bg-muted rounded-full mr-4"></div><div><div className="h-6 w-32 bg-muted rounded mb-1"></div><div className="h-4 w-24 bg-muted rounded"></div></div></div><div className="h-4 w-full bg-muted rounded mb-2"></div><div className="h-4 w-3/4 bg-muted rounded mb-4"></div><div className="flex justify-between items-center"><div className="h-5 w-20 bg-muted rounded"></div><div className="h-8 w-24 bg-muted rounded-full"></div></div>
+                <div key={i} className="glass-effect rounded-2xl p-6 animate-pulse">
+                  <div className="flex items-center mb-4 gap-4">
+                    <div className="w-14 h-14 bg-muted rounded-full shrink-0" />
+                    <div className="flex-1"><div className="h-5 w-32 bg-muted rounded mb-2" /><div className="h-3.5 w-20 bg-muted rounded" /></div>
+                  </div>
+                  <div className="h-3.5 w-full bg-muted rounded mb-2" />
+                  <div className="h-3.5 w-3/4 bg-muted rounded mb-4" />
+                  <div className="flex gap-1 mb-4"><div className="h-5 w-14 bg-muted rounded-full" /><div className="h-5 w-16 bg-muted rounded-full" /></div>
+                  <div className="flex justify-between"><div className="h-4 w-20 bg-muted rounded" /><div className="h-5 w-16 bg-muted rounded-full" /></div>
                 </div>
               ))}
             </div>
           ) : featuredArtists.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredArtists.map((artist, index) => (
-                <motion.div key={artist.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 + 0.3 }} className="h-full">
+                <motion.div
+                  key={artist.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.08 + 0.25 }}
+                  className="h-full"
+                >
                   <Link to={`/artist/${artist.username}`} className="block group h-full">
-                    <div className="glass-effect rounded-xl overflow-hidden h-full flex flex-col relative">
-                       {artist.location_thumbnail_url && (<div className="absolute inset-0 bg-cover bg-center opacity-15 group-hover:opacity-25 transition-opacity duration-300" style={{ backgroundImage: `url(${artist.location_thumbnail_url})` }}></div>)}
-                      <div className="p-5 flex-grow flex flex-col z-10 bg-card/50 group-hover:bg-card/30 transition-colors duration-300">
-                        <div className="flex items-center mb-3">
-                          <Avatar className="w-16 h-16 mr-4 border-2 border-primary/50"><AvatarImage src={artist.profile_photo_url} alt={artist.name} /><AvatarFallback className="ink-gradient text-primary-foreground">{artist.name?.charAt(0)?.toUpperCase() || 'A'}</AvatarFallback></Avatar>
-                          <div><h3 className="text-xl font-semibold group-hover:text-primary transition-colors">{artist.name}</h3><p className="text-sm text-muted-foreground">@{artist.username}</p></div>
+                    <div className="relative glass-effect rounded-2xl overflow-hidden h-full flex flex-col border border-border/40 group-hover:border-primary/30 transition-all duration-300 group-hover:shadow-[0_0_24px_rgba(229,62,62,0.15)]">
+                      {artist.location_thumbnail_url && (
+                        <div
+                          className="absolute inset-0 bg-cover bg-center opacity-10 group-hover:opacity-20 transition-opacity duration-500"
+                          style={{ backgroundImage: `url(${artist.location_thumbnail_url})` }}
+                        />
+                      )}
+                      <div className="relative p-5 flex-grow flex flex-col z-10">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Avatar className="w-14 h-14 border-2 border-primary/40 group-hover:border-primary/70 transition-colors shrink-0">
+                            <AvatarImage src={artist.profile_photo_url} alt={artist.name} />
+                            <AvatarFallback className="ink-gradient text-primary-foreground font-bold">{artist.name?.charAt(0)?.toUpperCase() || 'A'}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <h3 className="font-bold text-base leading-tight group-hover:text-primary transition-colors truncate">{artist.name}</h3>
+                            <p className="text-xs text-muted-foreground">@{artist.username}</p>
+                            {artist.location && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                <MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{artist.location}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        {artist.location && <div className="flex items-center text-sm text-muted-foreground mb-1"><MapPin className="w-4 h-4 mr-2 text-foreground" /><span>{artist.location}</span></div>}
-                        <p className="text-sm text-foreground/90 line-clamp-2 mb-3 flex-grow">{artist.bio || "No bio available."}</p>
-                        {artist.styles?.length > 0 && <div className="flex flex-wrap gap-1 mb-3">{artist.styles.slice(0, 3).map(style => <span key={style} className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded-full">{style}</span>)}</div>}
-                        <div className="mt-auto border-t border-border/30 pt-3">
-                          <div className="flex items-center justify-between text-sm"><div className="flex items-center"><Star className="w-4 h-4 text-yellow-400 fill-current mr-1" /><span>{artist.average_rating > 0 ? artist.average_rating : 'N/A'} ({artist.review_count} reviews)</span></div>{artist.booking_status ? <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded-full">Available</span> : <span className="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded-full">Booked</span>}</div>
-                           {timeSince(artist.last_active) && <div className="flex items-center text-xs text-muted-foreground mt-2"><Clock className="w-3 h-3 mr-1.5 text-foreground" />Active: {timeSince(artist.last_active)}</div>}
+
+                        <p className="text-sm text-foreground/75 line-clamp-2 mb-3 flex-grow leading-relaxed">{artist.bio || 'No bio available.'}</p>
+
+                        {artist.styles?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-4">
+                            {artist.styles.slice(0, 3).map(style => (
+                              <span key={style} className="px-2 py-0.5 bg-primary/15 text-primary text-xs rounded-full border border-primary/20 font-medium">{style}</span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-auto border-t border-border/20 pt-3 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Star className="w-3.5 h-3.5 text-yellow-400 fill-current" />
+                            <span className="font-medium text-foreground">{artist.average_rating > 0 ? artist.average_rating : 'N/A'}</span>
+                            <span>({artist.review_count})</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {timeSince(artist.last_active) && (
+                              <span className="text-muted-foreground/60 hidden sm:block"><Clock className="w-3 h-3 inline mr-0.5" />{timeSince(artist.last_active)}</span>
+                            )}
+                            {artist.booking_status
+                              ? <span className="px-2 py-0.5 bg-green-500/15 text-green-400 rounded-full border border-green-500/20">Available</span>
+                              : <span className="px-2 py-0.5 bg-red-500/15 text-red-400 rounded-full border border-red-500/20">Booked</span>
+                            }
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -228,45 +283,70 @@ const HomePage = () => {
                 </motion.div>
               ))}
             </div>
-          ) : (<p className="text-center text-muted-foreground">No featured artists available at the moment.</p>)}
+          ) : (
+            <div className="text-center py-16">
+              <TrendingUp className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+              <p className="text-muted-foreground">No featured artists available yet.</p>
+            </div>
+          )}
         </div>
       </section>
 
+      {/* ── DEVELOPER ZONE ── */}
       <section className="py-16">
         <div className="container mx-auto px-4">
-            <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="glass-effect rounded-2xl p-8"
-            >
-                <h2 className="text-2xl font-bold text-center mb-8 ink-text-gradient">Developer Zone</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div>
-                        <h3 className="text-xl font-semibold mb-4 flex items-center"><Newspaper className="w-5 h-5 mr-2 text-primary" /> Dev News & Updates</h3>
-                        <div className="space-y-4">
-                            {devNews.map((item, index) => (
-                                <div key={index} className="border-l-2 border-primary pl-4">
-                                    <p className="text-xs text-muted-foreground">{item.date}</p>
-                                    <p className="font-semibold">{item.title}</p>
-                                    <p className="text-sm text-foreground/80">{item.description}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-semibold mb-4">Why Choose InkSnap?</h3>
-                         <ul className="space-y-3">
-                            {whyChooseReasons.map((reason, index) => (
-                                <li key={index} className="flex items-start">
-                                    <CheckCircle className="w-5 h-5 mr-3 mt-0.5 text-green-400 flex-shrink-0" />
-                                    <span>{reason}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="rounded-2xl overflow-hidden border border-primary/10"
+            style={{ background: 'rgba(20,20,20,0.7)', backdropFilter: 'blur(12px)' }}
+          >
+            {/* Top accent bar */}
+            <div className="h-0.5 w-full ink-gradient" />
+            <div className="p-8">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-8 h-8 ink-gradient rounded-lg flex items-center justify-center shrink-0">
+                  <Zap className="w-4 h-4 text-white" />
                 </div>
-            </motion.div>
+                <div>
+                  <h2 className="text-xl font-bold">Developer Zone</h2>
+                  <p className="text-xs text-muted-foreground">What's been shipped & what's next</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div>
+                  <h3 className="text-sm font-semibold tracking-widest uppercase text-primary mb-4 flex items-center gap-2">
+                    <Newspaper className="w-4 h-4" /> Dev News
+                  </h3>
+                  <div className="space-y-5">
+                    {devNews.map((item, index) => (
+                      <div key={index} className="relative pl-4 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:ink-gradient">
+                        <p className="text-xs text-muted-foreground/60 mb-0.5">{item.date}</p>
+                        <p className="font-semibold text-sm mb-1">{item.title}</p>
+                        <p className="text-xs text-foreground/60 leading-relaxed">{item.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold tracking-widest uppercase text-primary mb-4">Why InkSnap?</h3>
+                  <ul className="space-y-4">
+                    {whyChooseReasons.map((reason, index) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <div className="w-5 h-5 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0 mt-0.5">
+                          <CheckCircle className="w-3 h-3 text-primary" />
+                        </div>
+                        <span className="text-sm text-foreground/75 leading-relaxed">{reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
     </div>

@@ -97,179 +97,140 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="absolute inset-0 ink-gradient opacity-5"></div>
-      
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden">
+      {/* Background glow blobs */}
+      <div className="absolute -top-20 -left-20 w-96 h-96 bg-primary/8 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-primary/6 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 ink-gradient opacity-[0.04] pointer-events-none" />
+
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="w-full max-w-md relative z-10"
+        transition={{ duration: 0.6 }}
+        className="w-full max-w-lg relative z-10"
       >
-        <div className="glass-effect rounded-2xl p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 ink-gradient rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30">
-              <InkSnapLogo className="w-12 h-12" />
+        {/* Card */}
+        <div className="rounded-2xl overflow-hidden border border-primary/10 shadow-2xl shadow-black/50"
+             style={{ background: 'rgba(18,18,18,0.85)', backdropFilter: 'blur(20px)' }}>
+          {/* Top red accent bar */}
+          <div className="h-0.5 w-full ink-gradient" />
+
+          <div className="p-8 md:p-10">
+            {/* Brand header */}
+            <div className="text-center mb-8">
+              <div className="w-14 h-14 mx-auto mb-4 ink-gradient rounded-xl flex items-center justify-center shadow-xl shadow-primary/30">
+                <InkSnapLogo className="w-10 h-10" />
+              </div>
+              <h1 className="text-2xl font-extrabold tracking-tight ink-text-gradient">InkSnap</h1>
+              <p className="text-sm text-muted-foreground mt-1">The tattoo artist discovery platform</p>
             </div>
-            <h1 className="text-3xl font-bold ink-text-gradient">InkSnap</h1>
-            <p className="text-muted-foreground mt-2">Join the tattoo community</p>
+
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-7 bg-white/5">
+                <TabsTrigger value="login" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-medium">Sign In</TabsTrigger>
+                <TabsTrigger value="signup" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-medium">Sign Up</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="login-email" className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
+                      <Input id="login-email" type="email" placeholder="you@example.com"
+                        value={loginForm.email} onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
+                        className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" required />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="login-password" className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
+                      <Input id="login-password" type="password" placeholder="••••••••"
+                        value={loginForm.password} onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                        className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" required />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2 pt-1">
+                    <Checkbox id="remember-me" checked={loginForm.rememberMe}
+                      onCheckedChange={(checked) => setLoginForm({...loginForm, rememberMe: !!checked})} />
+                    <Label htmlFor="remember-me" className="text-sm font-normal text-muted-foreground cursor-pointer">Remember me</Label>
+                  </div>
+
+                  <Button type="submit" className="w-full ink-gradient mt-2 h-11 font-semibold shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow" disabled={isLoading}>
+                    {isLoading ? 'Signing in...' : 'Sign In'}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup">
+                <form onSubmit={handleSignup} className="space-y-3.5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="signup-name" className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Full Name</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
+                        <Input id="signup-name" type="text" placeholder="Jane Doe"
+                          value={signupForm.name} onChange={(e) => setSignupForm({...signupForm, name: e.target.value})}
+                          className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" required />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="signup-username" className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Username</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 text-sm font-medium">@</span>
+                        <Input id="signup-username" type="text" placeholder="janedoe"
+                          value={signupForm.username} onChange={(e) => setSignupForm({...signupForm, username: e.target.value})}
+                          className="pl-8 bg-white/5 border-white/10 focus:border-primary/50" required />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="signup-email" className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
+                      <Input id="signup-email" type="email" placeholder="you@example.com"
+                        value={signupForm.email} onChange={(e) => setSignupForm({...signupForm, email: e.target.value})}
+                        className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" required />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="signup-password" className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
+                      <Input id="signup-password" type="password" placeholder="••••••••"
+                        value={signupForm.password} onChange={(e) => setSignupForm({...signupForm, password: e.target.value})}
+                        className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" required />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="signup-location" className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">Location</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
+                      <Input id="signup-location" type="text" placeholder="City, State"
+                        value={signupForm.location} onChange={(e) => setSignupForm({...signupForm, location: e.target.value})}
+                        className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2 py-1 px-3 rounded-lg bg-primary/5 border border-primary/15">
+                    <Checkbox id="is-artist" checked={signupForm.isArtist}
+                      onCheckedChange={(checked) => setSignupForm({...signupForm, isArtist: !!checked})} />
+                    <Label htmlFor="is-artist" className="text-sm cursor-pointer">I'm a tattoo artist</Label>
+                  </div>
+
+                  <Button type="submit" className="w-full ink-gradient h-11 font-semibold shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow" disabled={isLoading}>
+                    {isLoading ? 'Creating account...' : 'Create Account'}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </div>
-
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground w-4 h-4" />
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={loginForm.email}
-                      onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground w-4 h-4" />
-                    <Input
-                      id="login-password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={loginForm.password}
-                      onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="remember-me"
-                    checked={loginForm.rememberMe}
-                    onCheckedChange={(checked) => setLoginForm({...loginForm, rememberMe: !!checked})}
-                  />
-                  <Label htmlFor="remember-me" className="text-sm font-normal">
-                    Remember me
-                  </Label>
-                </div>
-
-                <Button type="submit" className="w-full ink-gradient" disabled={isLoading}>
-                  {isLoading ? 'Signing in...' : 'Sign In'}
-                </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground w-4 h-4" />
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      placeholder="Enter your full name"
-                      value={signupForm.name}
-                      onChange={(e) => setSignupForm({...signupForm, name: e.target.value})}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-username">Username</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground text-sm">@</span>
-                    <Input
-                      id="signup-username"
-                      type="text"
-                      placeholder="Choose a username"
-                      value={signupForm.username}
-                      onChange={(e) => setSignupForm({...signupForm, username: e.target.value})}
-                      className="pl-8"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground w-4 h-4" />
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={signupForm.email}
-                      onChange={(e) => setSignupForm({...signupForm, email: e.target.value})}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground w-4 h-4" />
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="Create a password"
-                      value={signupForm.password}
-                      onChange={(e) => setSignupForm({...signupForm, password: e.target.value})}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-location">Location</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground w-4 h-4" />
-                    <Input
-                      id="signup-location"
-                      type="text"
-                      placeholder="City, State"
-                      value={signupForm.location}
-                      onChange={(e) => setSignupForm({...signupForm, location: e.target.value})}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="is-artist"
-                    checked={signupForm.isArtist}
-                    onCheckedChange={(checked) => setSignupForm({...signupForm, isArtist: !!checked})}
-                  />
-                  <Label htmlFor="is-artist" className="text-sm">
-                    I'm a tattoo artist
-                  </Label>
-                </div>
-
-                <Button type="submit" className="w-full ink-gradient" disabled={isLoading}>
-                  {isLoading ? 'Creating account...' : 'Create Account'}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
         </div>
       </motion.div>
     </div>
