@@ -5,10 +5,10 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Newspaper, Heart, MessageSquare, Image as ImageIcon, UserCircle, Edit3 } from 'lucide-react';
+import { Loader2, Heart, MessageSquare, Image as ImageIcon, UserCircle, Edit3, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import UserPostsManager from '@/components/dashboard/profile_settings/ArtistPostsManager';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AnimatePresence } from 'framer-motion';
 
 const postsPerPage = 10;
 
@@ -205,17 +205,43 @@ const NewsFeedPage = () => {
           </motion.div>
         )}
 
-        {user && (
-          <Dialog open={showCreatePostDialog} onOpenChange={setShowCreatePostDialog}>
-            <DialogContent className="glass-effect sm:max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
-              <DialogHeader>
-                <DialogTitle>Manage Your Posts</DialogTitle>
-                <DialogDescription>Create new posts or edit existing ones.</DialogDescription>
-              </DialogHeader>
-              <UserPostsManager user={user} onPostCreatedOrUpdated={handlePostCreatedOrUpdated} />
-            </DialogContent>
-          </Dialog>
-        )}
+        {/* Custom overlay — avoids nested Radix Dialog aria-hidden conflict */}
+        <AnimatePresence>
+          {user && showCreatePostDialog && (
+            <motion.div
+              key="post-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              onClick={() => setShowCreatePostDialog(false)}
+            >
+              {/* Backdrop */}
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+              {/* Panel */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 12 }}
+                transition={{ duration: 0.18 }}
+                className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar glass-effect rounded-2xl border border-border/40"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between px-6 pt-6 pb-0">
+                  <div>
+                    <h2 className="text-lg font-bold leading-tight">Manage Your Posts</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">Create new posts or edit existing ones.</p>
+                  </div>
+                  <Button variant="ghost" size="icon" className="shrink-0 -mt-1 -mr-1" onClick={() => setShowCreatePostDialog(false)}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <UserPostsManager user={user} onPostCreatedOrUpdated={handlePostCreatedOrUpdated} />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {isLoading && posts.length === 0 && (
           <div className="text-center py-12">
