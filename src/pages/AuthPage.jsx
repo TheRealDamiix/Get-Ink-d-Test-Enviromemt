@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { User, Mail, Lock, MapPin } from 'lucide-react';
+import InkSnapLogo from '@/components/InkSnapLogo';
 
 const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -107,8 +108,8 @@ const AuthPage = () => {
       >
         <div className="glass-effect rounded-2xl p-8">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 ink-gradient rounded-2xl flex items-center justify-center">
-              <img src="https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/8bf17520f8ce5aa9c389b6e905e8e58b.jpg" alt="InkSnap Logo" className="w-12 h-12 rounded-lg object-cover" />
+            <div className="w-16 h-16 mx-auto mb-4 ink-gradient rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30">
+              <InkSnapLogo className="w-12 h-12" />
             </div>
             <h1 className="text-3xl font-bold ink-text-gradient">InkSnap</h1>
             <p className="text-muted-foreground mt-2">Join the tattoo community</p>

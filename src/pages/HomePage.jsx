@@ -5,11 +5,17 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, MapPin, Star, TrendingUp, Clock, Newspaper, CheckCircle } from 'lucide-react';
+import { Search, MapPin, Star, TrendingUp, Clock, Newspaper, CheckCircle, Zap } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { timeSince, calculateAverageRating } from '@/lib/utils';
+import InkSnapLogo from '@/components/InkSnapLogo';
 
 const devNews = [
+  {
+    date: 'March 8, 2026',
+    title: 'UI Refresh, Logo Fix & Cloudinary Edge Functions',
+    description: 'Replaced broken external logo URLs (Hostinger CDN) with an inline SVG InkSnapLogo component — no more missing images. Upgraded the Navbar with desktop navigation links (Search, Feed). Redesigned the HomePage hero section with improved typography, animated badge, glassmorphic search bar, and quick stats row. Created the missing Supabase Edge Functions for Cloudinary image upload (upload-to-cloudinary) and deletion (delete-from-cloudinary) — portfolio image uploads now fully functional once Cloudinary secrets are configured in Supabase.',
+  },
   {
     date: 'March 8, 2026',
     title: 'Full Codebase & Database Audit — Major Stability Update',
@@ -50,7 +56,6 @@ const HomePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const newLogoUrl = "https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png";
 
 
   useEffect(() => {
@@ -90,43 +95,87 @@ const HomePage = () => {
   return (
     <div className="min-h-screen">
       <header className="relative py-20 md:py-32 text-center overflow-hidden">
-        <div className="absolute inset-0 ink-gradient opacity-10"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/50 to-background z-0"></div>
-        
-        <motion.div 
+        {/* Background elements */}
+        <div className="absolute inset-0 ink-gradient opacity-10 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/40 to-background pointer-events-none z-0"></div>
+        {/* Decorative blobs */}
+        <div className="absolute top-10 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-10 right-1/4 w-48 h-48 bg-primary/8 rounded-full blur-2xl pointer-events-none"></div>
+
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           className="container mx-auto px-4 relative z-10"
         >
-          <div className="w-24 h-24 mx-auto mb-6 ink-gradient rounded-3xl flex items-center justify-center shadow-2xl">
-            <img src={newLogoUrl} alt="InkSnap Logo" className="w-20 h-20 rounded-2xl object-contain" />
-          </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-6">
-            Discover Your Next <span className="ink-text-gradient">Masterpiece</span>
+          {/* Logo badge */}
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="w-24 h-24 mx-auto mb-6 ink-gradient rounded-3xl flex items-center justify-center shadow-2xl shadow-primary/30"
+          >
+            <InkSnapLogo className="w-16 h-16" />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6"
+          >
+            <Zap className="w-3.5 h-3.5" /> Find your next ink, commission-free
+          </motion.div>
+
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+            Discover Your Next<br />
+            <span className="ink-text-gradient">Masterpiece</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
             Connect with talented tattoo artists, explore stunning portfolios, and book your next ink session with InkSnap.
           </p>
-          <form onSubmit={handleSearch} className="max-w-xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 items-center mb-12">
-            <Input
-              type="text"
-              placeholder="Search by style, artist, or keyword..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-12 text-base"
-            />
-            <Input
-              type="text"
-              placeholder="Enter location (e.g., City, State)"
-              value={locationTerm}
-              onChange={(e) => setLocationTerm(e.target.value)}
-              className="h-12 text-base"
-            />
-            <Button type="submit" className="md:col-span-2 ink-gradient h-12 text-lg">
-              <Search className="mr-2 h-5 w-5" /> Find Artists
-            </Button>
+
+          {/* Search bar */}
+          <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-10">
+            <div className="flex flex-col md:flex-row gap-3 p-2 glass-effect rounded-2xl border border-border/60 shadow-xl shadow-black/30">
+              <div className="flex items-center flex-1 gap-2 px-3">
+                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Input
+                  type="text"
+                  placeholder="Style, artist, or keyword..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-10 px-0 text-base"
+                />
+              </div>
+              <div className="hidden md:block w-px bg-border/50 my-1"></div>
+              <div className="flex items-center flex-1 gap-2 px-3">
+                <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Input
+                  type="text"
+                  placeholder="City, State..."
+                  value={locationTerm}
+                  onChange={(e) => setLocationTerm(e.target.value)}
+                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-10 px-0 text-base"
+                />
+              </div>
+              <Button type="submit" className="ink-gradient h-10 px-6 rounded-xl shrink-0">
+                Search
+              </Button>
+            </div>
           </form>
+
+          {/* Quick stats */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="flex items-center justify-center gap-8 text-sm text-muted-foreground"
+          >
+            <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-yellow-400 fill-current" /> Top-rated artists</span>
+            <span className="hidden sm:flex items-center gap-1.5"><MapPin className="w-4 h-4 text-primary" /> Locations nationwide</span>
+            <span className="flex items-center gap-1.5"><Zap className="w-4 h-4 text-primary" /> Commission-free</span>
+          </motion.div>
         </motion.div>
       </header>
 

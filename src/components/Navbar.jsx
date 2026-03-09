@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -10,14 +10,15 @@ import {
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, User, LayoutDashboard, Newspaper, MessageCircle, Loader2 } from 'lucide-react';
+import { LogOut, LayoutDashboard, Newspaper, MessageCircle, Loader2, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Badge } from '@/components/ui/badge'; // Import Badge
+import { Badge } from '@/components/ui/badge';
+import InkSnapLogo from '@/components/InkSnapLogo';
 
 const Navbar = () => {
-  const { user, logout, loading, profileLoading, unreadCount } = useAuth(); // Get unreadCount
+  const { user, logout, loading, profileLoading, unreadCount } = useAuth();
   const navigate = useNavigate();
-  const newLogoUrl = "https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png";
+  const location = useLocation();
 
   const handleLogout = async () => {
     await logout();
@@ -38,26 +39,43 @@ const Navbar = () => {
   const username = user?.username ?? user?.profile?.username;
   const isUserLoading = loading || profileLoading;
 
+  const navLinkClass = (path) =>
+    `text-sm font-medium transition-colors hover:text-primary ${
+      location.pathname === path ? 'text-primary' : 'text-muted-foreground'
+    }`;
+
   return (
-    <motion.nav 
+    <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       className="sticky top-0 z-50 glass-effect border-b border-border/50"
     >
       <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-3">
-            <img src={newLogoUrl} alt="InkSnap Logo" className="w-10 h-10 rounded-lg object-contain" />
-            <span className="text-xl font-bold ink-text-gradient">InkSnap</span>
+        <div className="flex items-center justify-between gap-4">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2 shrink-0">
+            <InkSnapLogo className="w-9 h-9" />
+            <span className="text-xl font-bold ink-text-gradient hidden sm:block">InkSnap</span>
           </Link>
 
-          <div className="flex items-center space-x-4">
+          {/* Desktop nav links */}
+          <nav className="hidden md:flex items-center gap-6">
+            <Link to="/search" className={navLinkClass('/search')}>
+              <span className="flex items-center gap-1.5"><Search className="w-3.5 h-3.5" />Search</span>
+            </Link>
+            <Link to="/feed" className={navLinkClass('/feed')}>
+              <span className="flex items-center gap-1.5"><Newspaper className="w-3.5 h-3.5" />Feed</span>
+            </Link>
+          </nav>
+
+          {/* Right side */}
+          <div className="flex items-center space-x-3">
             {isUserLoading ? (
                <Loader2 className="w-6 h-6 text-primary animate-spin" />
             ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={profilePhoto} alt={displayName || 'User Avatar'} />
                       <AvatarFallback className="ink-gradient text-primary-foreground">
@@ -98,7 +116,7 @@ const Navbar = () => {
               </DropdownMenu>
             ) : (
               <>
-                <Button variant="ghost" asChild size="sm"><Link to="/feed">Feed</Link></Button>
+                <Button variant="ghost" asChild size="sm" className="hidden sm:inline-flex"><Link to="/feed">Feed</Link></Button>
                 <Button asChild className="ink-gradient hover:opacity-90"><Link to="/auth">Sign In</Link></Button>
               </>
             )}
