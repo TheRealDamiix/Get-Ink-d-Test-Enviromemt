@@ -13,13 +13,8 @@ import InkSnapLogo from '@/components/InkSnapLogo';
 const devNews = [
   {
     date: 'March 8, 2026',
-    title: 'UI Refresh, Logo Fix & Cloudinary Edge Functions',
-    description: 'Replaced broken external logo URLs (Hostinger CDN) with an inline SVG InkSnapLogo component — no more missing images. Upgraded the Navbar with desktop navigation links (Search, Feed). Redesigned the HomePage hero section with improved typography, animated badge, glassmorphic search bar, and quick stats row. Created the missing Supabase Edge Functions for Cloudinary image upload (upload-to-cloudinary) and deletion (delete-from-cloudinary) — portfolio image uploads now fully functional once Cloudinary secrets are configured in Supabase.',
-  },
-  {
-    date: 'March 8, 2026',
-    title: 'Full Codebase & Database Audit — Major Stability Update',
-    description: 'Performed a comprehensive audit and fixed all critical bugs. Key fixes: added missing profileLoading state to AuthContext (was undefined app-wide, breaking all loading guards); replaced blank white screen during auth with a loading spinner; moved Supabase credentials to environment variables; eliminated infinite API fetch loops caused by toast/user in useCallback dependency arrays (now use stable refs); added AbortController to all async data fetches to prevent state updates on unmounted components; fixed form reset race condition in profile settings (now only resets on login/logout, not every profile update); added ProtectedRoute to App.jsx so dashboards and chat redirect to /auth when unauthenticated; fixed null crash in ArtistInfoPanel when bookings prop is undefined; fixed incorrect Supabase FK join syntax on reviews across multiple components; fixed infinite loop in NewsFeedPage caused by isLoading/hasMore in useCallback deps; removed global console.warn suppression from vite.config.js; and rebuilt the entire database schema from scratch with full RLS policies, indexes, RPC functions, and realtime support.',
+    title: 'Full Audit, UI Revamp & Cloudinary Integration',
+    description: 'Comprehensive codebase and database audit with all critical bugs fixed. Added missing profileLoading to AuthContext; eliminated infinite API fetch loops via stable refs and AbortControllers; fixed form reset race condition; added ProtectedRoute for auth-gated pages; fixed FK join syntax across components; rebuilt full DB schema with RLS, indexes, and realtime. UI revamp: replaced broken logo URLs with inline SVG component, redesigned hero and all major pages with editorial typography and glassmorphic cards, added desktop nav links, modernized Auth/Search/Feed pages. Created Supabase Edge Functions for Cloudinary image upload and deletion — portfolio uploads now fully functional.',
   },
   {
     date: 'June 20, 2025',
@@ -125,13 +120,13 @@ const HomePage = () => {
             transition={{ delay: 0.15 }}
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-semibold tracking-widest uppercase mb-8"
           >
-            <Zap className="w-3 h-3" /> Tattoo Artist Discovery Platform
+            <Zap className="w-3 h-3" /> Book your next session
           </motion.div>
 
           {/* Main heading */}
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-extrabold tracking-tight leading-none mb-6">
-            Your Vision.<br />
-            <span className="ink-text-gradient">Their Art.</span>
+            Find the ink<br />
+            <span className="ink-text-gradient">you want.</span>
           </h1>
           <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-12">
             Browse portfolios from talented tattoo artists, find your style, and book your next session — all in one place.
@@ -176,8 +171,6 @@ const HomePage = () => {
           >
             <span className="flex items-center gap-1.5"><Star className="w-3.5 h-3.5 text-yellow-400 fill-current" /> Top-rated artists</span>
             <span className="w-px h-4 bg-border/50" />
-            <span className="hidden sm:flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-primary/70" /> Nationwide</span>
-            <span className="hidden sm:block w-px h-4 bg-border/50" />
             <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-primary/70" /> Growing community</span>
           </motion.div>
         </motion.div>

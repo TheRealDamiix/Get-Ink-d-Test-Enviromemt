@@ -122,7 +122,6 @@ const AuthPage = () => {
                 <InkSnapLogo className="w-10 h-10" />
               </div>
               <h1 className="text-2xl font-extrabold tracking-tight ink-text-gradient">InkSnap</h1>
-              <p className="text-sm text-muted-foreground mt-1">The tattoo artist discovery platform</p>
             </div>
 
             <Tabs defaultValue="login" className="w-full">
