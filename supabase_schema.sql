@@ -614,5 +614,136 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------
+-- 15. Platform Feature Tables (Discovery / Marketplace / Social)
+-- ---------------------------------------------------------------
+
+-- Post Likes ─────────────────────────────────────────────────────
+create table if not exists public.post_likes (
+  id         uuid primary key default uuid_generate_v4(),
+  post_id    uuid not null references public.posts(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (post_id, user_id)
+);
+
+alter table public.post_likes enable row level security;
+
+drop policy if exists "post_likes_select" on public.post_likes;
+create policy "post_likes_select" on public.post_likes for select using (true);
+
+drop policy if exists "post_likes_insert" on public.post_likes;
+create policy "post_likes_insert" on public.post_likes for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "post_likes_delete" on public.post_likes;
+create policy "post_likes_delete" on public.post_likes for delete
+  using (auth.uid() = user_id);
+
+-- Post Comments ───────────────────────────────────────────────────
+create table if not exists public.post_comments (
+  id         uuid primary key default uuid_generate_v4(),
+  post_id    uuid not null references public.posts(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  content    text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.post_comments enable row level security;
+
+drop policy if exists "post_comments_select" on public.post_comments;
+create policy "post_comments_select" on public.post_comments for select using (true);
+
+drop policy if exists "post_comments_insert" on public.post_comments;
+create policy "post_comments_insert" on public.post_comments for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "post_comments_update" on public.post_comments;
+create policy "post_comments_update" on public.post_comments for update
+  using (auth.uid() = user_id);
+
+drop policy if exists "post_comments_delete" on public.post_comments;
+create policy "post_comments_delete" on public.post_comments for delete
+  using (auth.uid() = user_id);
+
+-- Trigger to keep updated_at current on post_comments
+create or replace function public.handle_post_comment_updated()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists post_comments_updated_at on public.post_comments;
+create trigger post_comments_updated_at
+  before update on public.post_comments
+  for each row execute procedure public.handle_post_comment_updated();
+
+-- Notifications ───────────────────────────────────────────────────
+create type if not exists public.notification_type as enum (
+  'follow', 'like', 'comment', 'booking', 'message'
+);
+
+create table if not exists public.notifications (
+  id           uuid primary key default uuid_generate_v4(),
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  actor_id     uuid references auth.users(id) on delete set null,
+  type         public.notification_type not null,
+  reference_id uuid,
+  is_read      boolean not null default false,
+  created_at   timestamptz not null default now()
+);
+
+alter table public.notifications enable row level security;
+
+drop policy if exists "notifications_select" on public.notifications;
+create policy "notifications_select" on public.notifications for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "notifications_insert" on public.notifications;
+create policy "notifications_insert" on public.notifications for insert
+  with check (true); -- inserted by triggers/edge functions
+
+drop policy if exists "notifications_update" on public.notifications;
+create policy "notifications_update" on public.notifications for update
+  using (auth.uid() = user_id);
+
+drop policy if exists "notifications_delete" on public.notifications;
+create policy "notifications_delete" on public.notifications for delete
+  using (auth.uid() = user_id);
+
+-- Saved Artists ───────────────────────────────────────────────────
+create table if not exists public.saved_artists (
+  id         uuid primary key default uuid_generate_v4(),
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  artist_id  uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (user_id, artist_id)
+);
+
+alter table public.saved_artists enable row level security;
+
+drop policy if exists "saved_artists_select" on public.saved_artists;
+create policy "saved_artists_select" on public.saved_artists for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "saved_artists_insert" on public.saved_artists;
+create policy "saved_artists_insert" on public.saved_artists for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "saved_artists_delete" on public.saved_artists;
+create policy "saved_artists_delete" on public.saved_artists for delete
+  using (auth.uid() = user_id);
+
+-- RPC: get unread notification count ─────────────────────────────
+create or replace function public.get_unread_notification_count(p_user_id uuid)
+returns integer language sql security definer as $$
+  select count(*)::integer
+  from public.notifications
+  where user_id = p_user_id and is_read = false;
+$$;
+
+-- ---------------------------------------------------------------
 -- Done!
 -- ---------------------------------------------------------------
