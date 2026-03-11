@@ -96,8 +96,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           profile: dbProfile as Profile,
         };
         setUser(fullUser);
+        // Fire-and-forget — don't block profileLoading on the unread count RPC
         if (fullUser.id) {
-          await fetchUnreadCount(fullUser.id);
+          fetchUnreadCount(fullUser.id);
         }
         return fullUser;
       } catch (error) {
@@ -116,8 +117,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      await fetchFullUserProfile(session?.user);
+      // Start profile fetch (synchronously sets profileLoading=true), then
+      // immediately set loading=false so the UI unblocks. Profile data arrives
+      // in the background while pages show their own per-page spinners.
+      const profilePromise = fetchFullUserProfile(session?.user);
       setLoading(false);
+      await profilePromise;
     });
     return () => subscription?.unsubscribe();
   }, [fetchFullUserProfile]);
