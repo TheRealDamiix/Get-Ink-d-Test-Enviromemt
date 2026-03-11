@@ -39,7 +39,9 @@ const Navbar: React.FC<NavbarProps> = () => {
   const profilePhoto = user?.profile_photo_url ?? user?.profile?.profile_photo_url;
   const displayName = user?.name ?? user?.profile?.name;
   const username = user?.username ?? user?.profile?.username;
-  const isUserLoading = loading || profileLoading;
+  // Only block on the initial auth check; profileLoading is background work
+  // and the avatar fallback covers the brief gap before profile data arrives.
+  const isUserLoading = loading;
 
   const navLinkClass = (path: string): string =>
     `text-sm font-medium transition-colors hover:text-primary ${

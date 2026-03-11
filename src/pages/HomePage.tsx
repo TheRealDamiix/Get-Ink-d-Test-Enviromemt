@@ -25,6 +25,11 @@ interface DevNewsItem {
 
 const devNews: DevNewsItem[] = [
   {
+    date: 'March 11, 2026',
+    title: 'TypeScript Migration, Vite 6 & Performance Improvements',
+    description: 'Full TypeScript migration across all 60+ source files (strict mode, 0 errors). Upgraded Vite 4 → 6 with ESM __dirname fix. Added complete Supabase DB type definitions and Next.js App Router–ready structure. Fixed slow/stuck initial load: auth state now unblocks immediately with background profile fetch. Fixed persistent Navbar spinner and added 15-second timeout on featured artist loading.',
+  },
+  {
     date: 'March 8, 2026',
     title: 'Full Audit, UI Revamp & Cloudinary Integration',
     description: 'Comprehensive codebase and database audit with all critical bugs fixed. Added missing profileLoading to AuthContext; eliminated infinite API fetch loops via stable refs and AbortControllers; fixed form reset race condition; added ProtectedRoute for auth-gated pages; fixed FK join syntax across components; rebuilt full DB schema with RLS, indexes, and realtime. UI revamp: replaced broken logo URLs with inline SVG component, redesigned hero and all major pages with editorial typography and glassmorphic cards, added desktop nav links, modernized Auth/Search/Feed pages. Created Supabase Edge Functions for Cloudinary image upload and deletion — portfolio uploads now fully functional.',
@@ -67,6 +72,9 @@ const HomePage = () => {
 
 
   useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
     const fetchFeaturedArtists = async () => {
       setIsLoading(true);
       try {
@@ -75,7 +83,8 @@ const HomePage = () => {
           .select('*, reviews_data:reviews!reviews_artist_id_fkey(stars)')
           .eq('is_artist', true)
           .order('last_active', { ascending: false, nullsFirst: false })
-          .limit(6);
+          .limit(6)
+          .abortSignal(controller.signal);
 
         if (error) throw error;
 
@@ -86,14 +95,25 @@ const HomePage = () => {
 
         setFeaturedArtists(artistsWithAvgRating);
       } catch (error: unknown) {
-        const err = error as { message?: string };
-        console.error('Error fetching featured artists:', error);
-        toast({ title: "Error", description: err.message || "Could not load featured artists.", variant: "destructive" });
+        if (controller.signal.aborted) {
+          // Timed out — silently drop, empty state renders below
+          console.warn('Featured artists fetch timed out after 15s');
+        } else {
+          const err = error as { message?: string };
+          console.error('Error fetching featured artists:', error);
+          toast({ title: "Error", description: err.message || "Could not load featured artists.", variant: "destructive" });
+        }
       } finally {
+        clearTimeout(timeoutId);
         setIsLoading(false);
       }
     };
+
     fetchFeaturedArtists();
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
   }, [toast]);
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
