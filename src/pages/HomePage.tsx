@@ -72,20 +72,29 @@ const HomePage = () => {
 
 
   useEffect(() => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+    let cancelled = false;
 
     const fetchFeaturedArtists = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
+        const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 15_000));
+        const query = supabase
           .from('profiles')
           .select('*, reviews_data:reviews!reviews_artist_id_fkey(stars)')
           .eq('is_artist', true)
           .order('last_active', { ascending: false, nullsFirst: false })
-          .limit(6)
-          .abortSignal(controller.signal);
+          .limit(6);
 
+        const result = await Promise.race([query, timeout]);
+
+        if (cancelled) return;
+
+        if (!result) {
+          console.warn('Featured artists fetch timed out after 15s');
+          return;
+        }
+
+        const { data, error } = result;
         if (error) throw error;
 
         const artistsWithAvgRating = (data || []).map((artist: FeaturedArtist) => {
@@ -95,25 +104,18 @@ const HomePage = () => {
 
         setFeaturedArtists(artistsWithAvgRating);
       } catch (error: unknown) {
-        if (controller.signal.aborted) {
-          // Timed out — silently drop, empty state renders below
-          console.warn('Featured artists fetch timed out after 15s');
-        } else {
+        if (!cancelled) {
           const err = error as { message?: string };
           console.error('Error fetching featured artists:', error);
           toast({ title: "Error", description: err.message || "Could not load featured artists.", variant: "destructive" });
         }
       } finally {
-        clearTimeout(timeoutId);
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     fetchFeaturedArtists();
-    return () => {
-      controller.abort();
-      clearTimeout(timeoutId);
-    };
+    return () => { cancelled = true; };
   }, [toast]);
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {

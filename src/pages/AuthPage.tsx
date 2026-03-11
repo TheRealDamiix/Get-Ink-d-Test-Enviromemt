@@ -31,9 +31,16 @@ interface SignupForm {
 
 const AuthPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { login, signup } = useAuth();
+  const { login, signup, user, profileLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Navigate once auth state resolves — avoids racing with onAuthStateChange
+  React.useEffect(() => {
+    if (user && !profileLoading) {
+      navigate(user.is_artist ? '/artist-dashboard' : '/client-dashboard', { replace: true });
+    }
+  }, [user, profileLoading, navigate]);
 
   const [loginForm, setLoginForm] = useState<LoginForm>({
     email: '',
@@ -57,24 +64,12 @@ const AuthPage = () => {
     const { data, error } = await login(loginForm.email, loginForm.password);
 
     if (error) {
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "Welcome back!",
-        description: "You've been successfully logged in.",
-      });
-
-      if ((data.user as { is_artist?: boolean })?.is_artist) {
-        navigate('/artist-dashboard');
-      } else {
-        navigate('/client-dashboard');
-      }
+      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      setIsLoading(false);
     }
-    setIsLoading(false);
+    // On success: onAuthStateChange fires, sets user in context, useEffect above navigates.
+    // Don't call navigate() here — user isn't in context yet and ProtectedRoute would
+    // redirect back to /auth before the profile fetch completes.
   };
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -94,23 +89,12 @@ const AuthPage = () => {
     const { data, error } = await signup(email, password, metadata);
 
     if (error) {
-      toast({
-        title: "Signup failed",
-        description: error.message,
-        variant: "destructive"
-      });
+      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+      setIsLoading(false);
     } else {
-      toast({
-        title: "Account created!",
-        description: "Welcome to InkSnap! Please check your email to verify your account.",
-      });
-      if ((data.user as { is_artist?: boolean })?.is_artist) {
-        navigate('/artist-dashboard');
-      } else {
-        navigate('/client-dashboard');
-      }
+      toast({ title: "Account created!", description: "Welcome to InkSnap!" });
+      // Navigation handled by useEffect once user is set in context
     }
-    setIsLoading(false);
   };
 
   return (
