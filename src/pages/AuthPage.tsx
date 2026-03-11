@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -31,16 +30,9 @@ interface SignupForm {
 
 const AuthPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { login, signup, user, profileLoading } = useAuth();
+  const { login, signup } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Navigate once auth state resolves — avoids racing with onAuthStateChange
-  React.useEffect(() => {
-    if (user && !profileLoading) {
-      navigate(user.is_artist ? '/artist-dashboard' : '/client-dashboard', { replace: true });
-    }
-  }, [user, profileLoading, navigate]);
 
   const [loginForm, setLoginForm] = useState<LoginForm>({
     email: '',
@@ -61,39 +53,78 @@ const AuthPage = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { data, error } = await login(loginForm.email, loginForm.password);
+    try {
+      const { data, error } = await login(loginForm.email, loginForm.password);
 
-    if (error) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else if (data.user) {
+        toast({
+          title: "Welcome back!",
+          description: "You've been successfully logged in.",
+        });
+
+        // Use metadata or profile data to navigate
+        const isArtist = data.user.user_metadata?.is_artist;
+        navigate(isArtist ? '/artist-dashboard' : '/client-dashboard');
+      }
+    } catch (err: any) {
+      console.error("Auth error:", err);
+      toast({
+        title: "Connection Error",
+        description: "Failed to reach the authentication server.",
+        variant: "destructive"
+      });
+    } finally {
       setIsLoading(false);
     }
-    // On success: onAuthStateChange fires, sets user in context, useEffect above navigates.
-    // Don't call navigate() here — user isn't in context yet and ProtectedRoute would
-    // redirect back to /auth before the profile fetch completes.
   };
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { name, username, email, password, isArtist, location } = signupForm;
+    try {
+      const { name, username, email, password, isArtist, location } = signupForm;
 
-    const metadata: Record<string, unknown> = {
-      name,
-      username,
-      is_artist: isArtist,
-      location,
-      profile_photo_url: null
-    };
+      const metadata: Record<string, unknown> = {
+        name,
+        username,
+        is_artist: isArtist,
+        location,
+        profile_photo_url: null
+      };
 
-    const { data, error } = await signup(email, password, metadata);
+      const { data, error } = await signup(email, password, metadata);
 
-    if (error) {
-      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+      if (error) {
+        toast({
+          title: "Signup failed",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else if (data.user) {
+        toast({
+          title: "Account created!",
+          description: "Welcome to InkSnap! Please check your email to verify your account.",
+        });
+        
+        // Navigate based on selected role
+        navigate(isArtist ? '/artist-dashboard' : '/client-dashboard');
+      }
+    } catch (err: any) {
+      console.error("Signup error:", err);
+      toast({
+        title: "Critical Error",
+        description: err.message || "An unexpected error occurred during signup.",
+        variant: "destructive"
+      });
+    } finally {
       setIsLoading(false);
-    } else {
-      toast({ title: "Account created!", description: "Welcome to InkSnap!" });
-      // Navigation handled by useEffect once user is set in context
     }
   };
 
@@ -110,14 +141,11 @@ const AuthPage = () => {
         transition={{ duration: 0.6 }}
         className="w-full max-w-lg relative z-10"
       >
-        {/* Card */}
         <div className="rounded-2xl overflow-hidden border border-primary/10 shadow-2xl shadow-black/50"
              style={{ background: 'rgba(18,18,18,0.85)', backdropFilter: 'blur(20px)' }}>
-          {/* Top red accent bar */}
           <div className="h-0.5 w-full ink-gradient" />
 
           <div className="p-8 md:p-10">
-            {/* Brand header */}
             <div className="text-center mb-8">
               <div className="w-14 h-14 mx-auto mb-4 ink-gradient rounded-xl flex items-center justify-center shadow-xl shadow-primary/30">
                 <InkSnapLogo className="w-10 h-10" />
@@ -138,7 +166,7 @@ const AuthPage = () => {
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
                       <Input id="login-email" type="email" placeholder="you@example.com"
-                        value={loginForm.email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginForm({...loginForm, email: e.target.value})}
+                        value={loginForm.email} onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
                         className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" required />
                     </div>
                   </div>
@@ -148,14 +176,14 @@ const AuthPage = () => {
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
                       <Input id="login-password" type="password" placeholder="••••••••"
-                        value={loginForm.password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginForm({...loginForm, password: e.target.value})}
+                        value={loginForm.password} onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
                         className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" required />
                     </div>
                   </div>
 
                   <div className="flex items-center space-x-2 pt-1">
                     <Checkbox id="remember-me" checked={loginForm.rememberMe}
-                      onCheckedChange={(checked: boolean | 'indeterminate') => setLoginForm({...loginForm, rememberMe: !!checked})} />
+                      onCheckedChange={(checked) => setLoginForm({...loginForm, rememberMe: !!checked})} />
                     <Label htmlFor="remember-me" className="text-sm font-normal text-muted-foreground cursor-pointer">Remember me</Label>
                   </div>
 
@@ -173,7 +201,7 @@ const AuthPage = () => {
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
                         <Input id="signup-name" type="text" placeholder="Jane Doe"
-                          value={signupForm.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSignupForm({...signupForm, name: e.target.value})}
+                          value={signupForm.name} onChange={(e) => setSignupForm({...signupForm, name: e.target.value})}
                           className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" required />
                       </div>
                     </div>
@@ -182,7 +210,7 @@ const AuthPage = () => {
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 text-sm font-medium">@</span>
                         <Input id="signup-username" type="text" placeholder="janedoe"
-                          value={signupForm.username} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSignupForm({...signupForm, username: e.target.value})}
+                          value={signupForm.username} onChange={(e) => setSignupForm({...signupForm, username: e.target.value})}
                           className="pl-8 bg-white/5 border-white/10 focus:border-primary/50" required />
                       </div>
                     </div>
@@ -193,7 +221,7 @@ const AuthPage = () => {
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
                       <Input id="signup-email" type="email" placeholder="you@example.com"
-                        value={signupForm.email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSignupForm({...signupForm, email: e.target.value})}
+                        value={signupForm.email} onChange={(e) => setSignupForm({...signupForm, email: e.target.value})}
                         className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" required />
                     </div>
                   </div>
@@ -203,7 +231,7 @@ const AuthPage = () => {
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4" />
                       <Input id="signup-password" type="password" placeholder="••••••••"
-                        value={signupForm.password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSignupForm({...signupForm, password: e.target.value})}
+                        value={signupForm.password} onChange={(e) => setSignupForm({...signupForm, password: e.target.value})}
                         className="pl-10 bg-white/5 border-white/10 focus:border-primary/50" required />
                     </div>
                   </div>
@@ -221,7 +249,7 @@ const AuthPage = () => {
 
                   <div className="flex items-center space-x-2 py-1 px-3 rounded-lg bg-primary/5 border border-primary/15">
                     <Checkbox id="is-artist" checked={signupForm.isArtist}
-                      onCheckedChange={(checked: boolean | 'indeterminate') => setSignupForm({...signupForm, isArtist: !!checked})} />
+                      onCheckedChange={(checked) => setSignupForm({...signupForm, isArtist: !!checked})} />
                     <Label htmlFor="is-artist" className="text-sm cursor-pointer">I'm a tattoo artist</Label>
                   </div>
 
