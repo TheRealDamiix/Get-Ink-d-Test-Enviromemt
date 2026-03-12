@@ -63,15 +63,14 @@ const AuthPage = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await login(loginForm.email, loginForm.password);
+      const { error } = await login(loginForm.email, loginForm.password);
       if (error) {
         toast({ title: "Login failed", description: error.message, variant: "destructive" });
-      } else if (data?.user) {
-        // Navigate immediately using user_metadata — reliable and available synchronously.
-        // The useEffect above will also fire once the DB profile loads (no harm, replace:true).
-        const isArtist = data.user.user_metadata?.is_artist === true;
-        navigate(isArtist ? '/artist-dashboard' : '/client-dashboard', { replace: true });
       }
+      // On success: onAuthStateChange fires → fetchFullUserProfile → sets user in context
+      // → useEffect above navigates once state is committed. Do NOT call navigate() here —
+      // setProfileLoading(true) hasn't been committed yet so ProtectedRoute would redirect
+      // back to /auth.
     } catch (err: unknown) {
       toast({
         title: "Connection Error",
@@ -103,11 +102,10 @@ const AuthPage = () => {
       if (error) {
         toast({ title: "Signup failed", description: error.message, variant: "destructive" });
       } else if (data?.session) {
-        // Auto-confirmed session (e.g. email confirm disabled) — navigate immediately.
+        // Auto-confirmed: onAuthStateChange will fire, set user, useEffect navigates.
         toast({ title: "Account created!", description: "Welcome to InkSnap!" });
-        navigate(isArtist ? '/artist-dashboard' : '/client-dashboard', { replace: true });
       } else {
-        // Email confirmation required — user will sign in after confirming.
+        // Email confirmation required.
         toast({ title: "Account created!", description: "Check your email to confirm your account." });
       }
     } catch (err: unknown) {
