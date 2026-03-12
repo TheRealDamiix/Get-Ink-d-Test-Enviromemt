@@ -135,9 +135,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      // Start profile fetch (synchronously sets profileLoading=true), then
-      // immediately set loading=false so the UI unblocks. Profile data arrives
-      // in the background while pages show their own per-page spinners.
       const profilePromise = fetchFullUserProfile(session?.user);
       setLoading(false);
       await profilePromise;
