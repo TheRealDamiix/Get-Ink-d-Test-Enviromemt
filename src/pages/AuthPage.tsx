@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -35,7 +34,8 @@ const AuthPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Navigate once auth state resolves — avoids racing with onAuthStateChange
+  // Navigate once auth state resolves — avoids racing with onAuthStateChange.
+  // Using profile data from context ensures is_artist is from the DB, not stale metadata.
   React.useEffect(() => {
     if (user && !profileLoading) {
       navigate(user.is_artist ? '/artist-dashboard' : '/client-dashboard', { replace: true });
@@ -61,40 +61,54 @@ const AuthPage = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { data, error } = await login(loginForm.email, loginForm.password);
-
-    if (error) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+    try {
+      const { error } = await login(loginForm.email, loginForm.password);
+      if (error) {
+        toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      }
+      // On success: onAuthStateChange fires → sets user in context → useEffect above navigates.
+      // Don't navigate here — user isn't in context yet and ProtectedRoute would
+      // redirect back to /auth before the profile fetch completes.
+    } catch (err: unknown) {
+      toast({
+        title: "Connection Error",
+        description: "Failed to reach the authentication server.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-    // On success: onAuthStateChange fires, sets user in context, useEffect above navigates.
-    // Don't call navigate() here — user isn't in context yet and ProtectedRoute would
-    // redirect back to /auth before the profile fetch completes.
   };
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { name, username, email, password, isArtist, location } = signupForm;
+    try {
+      const { name, username, email, password, isArtist, location } = signupForm;
 
-    const metadata: Record<string, unknown> = {
-      name,
-      username,
-      is_artist: isArtist,
-      location,
-      profile_photo_url: null
-    };
+      const metadata: Record<string, unknown> = {
+        name,
+        username,
+        is_artist: isArtist,
+        location,
+        profile_photo_url: null
+      };
 
-    const { data, error } = await signup(email, password, metadata);
+      const { error } = await signup(email, password, metadata);
 
-    if (error) {
-      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Account created!", description: "Welcome to InkSnap!" });
-      // Navigation handled by useEffect once user is set in context
+      if (error) {
+        toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Account created!", description: "Welcome to InkSnap!" });
+        // Navigation handled by useEffect once user is set in context
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
