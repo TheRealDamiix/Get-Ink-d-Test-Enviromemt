@@ -34,11 +34,12 @@ const AuthPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Navigate once auth state resolves — avoids racing with onAuthStateChange.
-  // Using profile data from context ensures is_artist is from the DB, not stale metadata.
+  // Fallback: if already logged in (e.g. page refresh), redirect once profile resolves.
   React.useEffect(() => {
     if (user && !profileLoading) {
-      navigate(user.is_artist ? '/artist-dashboard' : '/client-dashboard', { replace: true });
+      // Prefer DB is_artist; fall back to user_metadata for newly-created accounts
+      const isArtist = user.is_artist ?? (user.user_metadata?.is_artist === true);
+      navigate(isArtist ? '/artist-dashboard' : '/client-dashboard', { replace: true });
     }
   }, [user, profileLoading, navigate]);
 
@@ -62,13 +63,15 @@ const AuthPage = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await login(loginForm.email, loginForm.password);
+      const { data, error } = await login(loginForm.email, loginForm.password);
       if (error) {
         toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      } else if (data?.user) {
+        // Navigate immediately using user_metadata — reliable and available synchronously.
+        // The useEffect above will also fire once the DB profile loads (no harm, replace:true).
+        const isArtist = data.user.user_metadata?.is_artist === true;
+        navigate(isArtist ? '/artist-dashboard' : '/client-dashboard', { replace: true });
       }
-      // On success: onAuthStateChange fires → sets user in context → useEffect above navigates.
-      // Don't navigate here — user isn't in context yet and ProtectedRoute would
-      // redirect back to /auth before the profile fetch completes.
     } catch (err: unknown) {
       toast({
         title: "Connection Error",
@@ -95,13 +98,17 @@ const AuthPage = () => {
         profile_photo_url: null
       };
 
-      const { error } = await signup(email, password, metadata);
+      const { data, error } = await signup(email, password, metadata);
 
       if (error) {
         toast({ title: "Signup failed", description: error.message, variant: "destructive" });
-      } else {
+      } else if (data?.session) {
+        // Auto-confirmed session (e.g. email confirm disabled) — navigate immediately.
         toast({ title: "Account created!", description: "Welcome to InkSnap!" });
-        // Navigation handled by useEffect once user is set in context
+        navigate(isArtist ? '/artist-dashboard' : '/client-dashboard', { replace: true });
+      } else {
+        // Email confirmation required — user will sign in after confirming.
+        toast({ title: "Account created!", description: "Check your email to confirm your account." });
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';

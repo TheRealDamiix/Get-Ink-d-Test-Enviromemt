@@ -113,8 +113,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return null;
         }
         console.error('Error fetching full profile:', error);
-        setUser(sessionUser as AuthUser);
-        return sessionUser as AuthUser;
+        // Merge user_metadata so is_artist, name, username are available as a
+        // fallback even when the DB profile row cannot be fetched.
+        const metaUser: AuthUser = {
+          ...sessionUser,
+          is_artist: sessionUser.user_metadata?.is_artist === true,
+          name: sessionUser.user_metadata?.name as string | undefined,
+          username: sessionUser.user_metadata?.username as string | undefined,
+        } as AuthUser;
+        setUser(metaUser);
+        return metaUser;
       } finally {
         setProfileLoading(false);
       }
