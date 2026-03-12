@@ -130,7 +130,7 @@ const ChatPage = () => {
         </div>
 
         <div className={cn("flex flex-col flex-1 relative", isMobileView && !selectedConversationId && "hidden")}>
-          <div style={{ backgroundImage: `url(https://storage.googleapis.com/hostinger-horizons-assets-prod/dc3f6a73-e4ae-4a98-96ee-f971fdcf05b8/adae335f6caa43250fd8bd69651ee119.png)` }} className="absolute inset-0 bg-center bg-contain bg-no-repeat opacity-[0.02] z-0 pointer-events-none" />
+          <div className="absolute inset-0 z-0 pointer-events-none" />
           <div className="relative z-10 flex flex-col h-full">
             {selectedConversationId ? (
               <MessageArea key={selectedConversationId} conversationId={selectedConversationId} otherUser={otherUser} />

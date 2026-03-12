@@ -102,6 +102,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         return fullUser;
       } catch (error) {
+        const msg = (error as Error)?.message ?? '';
+        const isAbort =
+          msg.includes('AbortError') ||
+          msg.includes('Lock broken') ||
+          msg.includes('signal is aborted');
+        if (isAbort) {
+          // Supabase lock contention (e.g. rapid page transitions). The auth
+          // system will fire another onAuthStateChange — let that one succeed.
+          return null;
+        }
         console.error('Error fetching full profile:', error);
         setUser(sessionUser as AuthUser);
         return sessionUser as AuthUser;

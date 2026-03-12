@@ -65,8 +65,8 @@ const AuthPage = () => {
 
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
-      setIsLoading(false);
     }
+    setIsLoading(false);
     // On success: onAuthStateChange fires, sets user in context, useEffect above navigates.
     // Don't call navigate() here — user isn't in context yet and ProtectedRoute would
     // redirect back to /auth before the profile fetch completes.
@@ -90,11 +90,11 @@ const AuthPage = () => {
 
     if (error) {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });
-      setIsLoading(false);
     } else {
       toast({ title: "Account created!", description: "Welcome to InkSnap!" });
       // Navigation handled by useEffect once user is set in context
     }
+    setIsLoading(false);
   };
 
   return (
